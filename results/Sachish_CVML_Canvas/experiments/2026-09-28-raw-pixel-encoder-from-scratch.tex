@@ -1,0 +1,167 @@
+\subsection{Training an Encoder from Scratch on Raw Pixels (No Pretrained Features)}
+\label{exp:raw-pixel-from-scratch}
+
+\paragraph{What we tried} Every checkpoint logged so far starts from frozen or
+fine-tuned DINOv2 features. \texttt{pwm\_raw\_residual\_mlp\_paper\_window0\_vicreg}
+removes that dependency entirely: \texttt{token\_mode="raw"} trains a small
+residual-MLP encoder directly on raw pixels, from scratch, jointly with the predictor
+--- otherwise the same \texttt{paper\_window0\_vicreg} recipe (VICReg regularizer,
+\texttt{window\_size=0}, \texttt{straighten\_weight=0.1}, \texttt{batch\_size=32}) used
+elsewhere in this project. This tests whether the patterns found across this
+investigation depend on starting from a strong pretrained visual prior, or persist even
+when the encoder has to build its own representation from nothing. Scored with the same
+full metric suite from Section~\ref{sec:methodology} (Main and Additional).
+
+\paragraph{Result}
+
+\begin{table}[H]
+\centering
+\caption{Main metrics, raw-pixel residual-MLP encoder (from scratch), K400.}
+\label{tab:raw-pixel-main}
+\begin{tabular}{lc}
+\toprule
+Metric & Value \\
+\midrule
+\multicolumn{2}{l}{\textit{Whole-dataset collapse and spread}} \\
+effective\_rank\_fraction & \good{0.8419} \\
+$W$ (within-clip mean pairwise L2) & 14.9135 \\
+$B$ (across-clip mean pairwise L2) & 26.7479 \\
+$B-W$ (gap) & 11.8344 \\
+\midrule
+\multicolumn{2}{l}{\textit{Trajectory geometry}} \\
+trajectory\_straightness ($z$) & \good{0.2090} \\
+mean\_velocity\_cosine ($z$) & \good{0.0841} \\
+start\_end\_displacement ($z$) & 0.9174 \\
+direction\_reversal\_fraction ($x$) & \good{0.4083} \\
+\midrule
+\multicolumn{2}{l}{\textit{Temporal order}} \\
+time\_progress\_spearman ($z$) & 0.9070 \\
+distance\_to\_goal\_spearman ($x$) & \good{0.6425} \\
+adjacent\_temporal\_nn\_fraction ($z$) & 0.8699 \\
+\midrule
+\multicolumn{2}{l}{\textit{Cross-clip temporal consistency}} \\
+tcc\_kendall\_tau (mean) & 0.0136 \\
+\midrule
+\multicolumn{2}{l}{\textit{Semantic information}} \\
+chirality.mean\_accuracy ($x$) & \bad{0.5811} \\
+content.knn.balanced\_acc & 0.0623 \\
+content.linear.balanced\_acc & 0.0772 \\
+change.knn.balanced\_acc & 0.1057 \\
+change.linear.balanced\_acc & 0.1180 \\
+content+change.knn.balanced\_acc & 0.1159 \\
+content+change.linear.balanced\_acc & 0.1354 \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.3em}
+{\footnotesize \texttt{content.linear.balanced\_acc} (0.0772) is below \texttt{chance.majority}
+(0.1280) --- the only checkpoint in this project's log where the linear content probe
+underperforms the majority-class baseline. No \texttt{reconstruction\_r2} row: there is
+no DINOv2 target to reconstruct back to for a \texttt{token\_mode="raw"} checkpoint (see
+\texttt{eval\_common/loading.py}'s \texttt{encode\_world\_model} docstring).}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Additional metrics, raw-pixel residual-MLP encoder --- same run as
+Table~\ref{tab:raw-pixel-main}.}
+\label{tab:raw-pixel-additional}
+\begin{tabular}{lc}
+\toprule
+Metric & Value \\
+\midrule
+\multicolumn{2}{l}{\textit{Trajectory geometry and raw variants}} \\
+mean\_chord\_alignment ($z$) & 0.1530 \\
+trajectory\_straightness\_raw ($x$) & 0.2089 \\
+mean\_velocity\_cosine\_raw ($x$) & 0.0841 \\
+mean\_chord\_alignment\_raw ($x$) & 0.1529 \\
+\midrule
+\multicolumn{2}{l}{\textit{Raw embedding magnitude}} \\
+norm\_growth ($x$) & 1.0003 \\
+norm\_std\_within\_clip ($x$) & 0.1088 \\
+adjacent\_l2\_distance ($x$) & 6.9463 \\
+mean\_norm ($x$) & 20.8358 \\
+\midrule
+\multicolumn{2}{l}{\textit{Change-direction consistency}} \\
+change\_direction.gap & 0.0088 \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.3em}
+{\footnotesize The normalized ($z$) and raw ($x$) trajectory-geometry values are nearly
+identical here (e.g.\ \texttt{trajectory\_straightness} 0.2090 vs.\ 0.2089) --- this
+encoder's per-frame norm is already close to constant within a clip
+(\texttt{norm\_std\_within\_clip}=0.1088, \texttt{norm\_growth}$\approx$1.0003), so
+L2-normalizing barely changes the geometry.}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Training stats, raw-pixel residual-MLP encoder.}
+\label{tab:raw-pixel-training}
+\begin{tabular}{lccc}
+\toprule
+Loss term & Epoch 0 & Best (ep17) & Last (ep49) \\
+\midrule
+train\_pred & 0.316 & 0.212 ($\downarrow$33\%) & 0.327 \\
+train\_straighten & 1.387 & 1.124 ($\downarrow$19\%) & 1.110 \\
+train\_vicreg\_std & 0.307 & 0.238 ($\downarrow$22\%) & 0.135 \\
+train\_vicreg\_cov & 2.812 & 3.547 ($\uparrow$26\%, worse) & 3.811 \\
+train\_total & 0.874 & 0.704 ($\downarrow$20\%) & 0.726 \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.3em}
+{\footnotesize Best epoch 17 of 50 logged; full run, no early stop.}
+\end{table}
+
+\paragraph{Inference}
+
+\textbf{This pushes the generalization question from the previous experiment
+further --- not just a different encoder \emph{architecture}, but no pretrained visual
+prior at all.} The batch-size/regularizer ablation showed the collapse-vs-straightness
+tension isn't specific to the patch-channel encoder; this checkpoint asks whether it
+depends on starting from frozen DINOv2 features in the first place, by training a small
+residual-MLP encoder from scratch directly on raw pixels, jointly with the predictor,
+using the same \texttt{paper\_window0\_vicreg} recipe used elsewhere in this log.
+
+\textbf{This is the only checkpoint in the log so far to be green on collapse
+\emph{and} every straightness metric simultaneously --- everywhere else in this log,
+those two have traded off.} \texttt{effective\_rank\_fraction}=0.8419 beats both DINOv2
+baselines (green), and \texttt{trajectory\_straightness} (0.209), \texttt{mean\_velocity\_cosine}
+(+0.0841, the only \emph{positive} value seen anywhere in this log --- every other
+checkpoint and every frozen encoder is negative), and \texttt{direction\_reversal\_fraction}
+(0.408, the lowest/best of anything logged) are all green too. In every prior experiment,
+a green collapse metric came with red straightness metrics or vice versa; here all four
+are green at once. \texttt{distance\_to\_goal\_spearman} (0.6425) is green too, beating
+both DINOv2 baselines --- \texttt{time\_progress\_spearman} (0.9070) is the only one of
+the eight core metrics that lands uncolored, close to but just under both baselines
+(0.9040--0.9114). This is the best-rounded profile of any trained checkpoint in the log:
+not just collapse and straightness together, but one of the two temporal-order metrics
+as well.
+
+\textbf{That combination does not extend to semantic content --- \texttt{content.linear.balanced\_acc}
+is the one clearly red result, and it undercuts even chance.} 0.0772, below this
+checkpoint's own \texttt{chance.majority} baseline of 0.1280 --- the only checkpoint in
+this project's log where the linear content probe underperforms just guessing the
+majority class. \texttt{chirality.mean\_accuracy} (0.5811) is also red, in the same
+range as every other trained checkpoint in this log, not recovered by the otherwise
+exceptional collapse/straightness profile. With no pretrained visual prior constraining
+it, the encoder is free to organize its space however is easiest for the loss --- and
+the easiest solution found here is a very straight, very ordinal, non-collapsed
+trajectory that carries almost no recoverable content about what the clip actually
+shows. This is the clearest single data point in the log for why collapse and
+straightness numbers, even both green at once, cannot be read as "this representation is
+good" without also checking a semantic probe.
+
+\textbf{Training dynamics are a mild drift, not the sharp divergence seen when
+\texttt{window\_size=0} destabilized the patch-channel encoder.} \texttt{train\_total}
+bottoms out smoothly at epoch 17 (0.704) and creeps back up gradually to 0.726 by epoch
+49 --- never exploding the way \texttt{window0\_2}/\texttt{window0\_vicreg\_3} did in the
+window/VICReg ablation. \texttt{train\_vicreg\_cov} never improves at any point in
+training, including the "good" early phase (2.81 $\to$ 3.55 $\to$ 3.81, monotonically
+worse throughout) --- the early gains (epoch 0 $\to$ 17) come entirely from
+\texttt{train\_vicreg\_std} and \texttt{train\_straighten}, not from \texttt{vicreg\_cov}
+doing any real work here, yet \texttt{effective\_rank\_fraction} still ends up green ---
+a reminder that a single loss term's own trajectory doesn't necessarily predict the
+eval-time collapse metric it's meant to serve.

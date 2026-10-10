@@ -1,0 +1,400 @@
+\section{Methodology}
+\label{sec:methodology}
+
+\subsection{Model and Training Setup}
+\label{sec:methodology-architecture}
+
+Every trained checkpoint in this log is a \texttt{ProceduralWorldModel}: an encoder maps
+each frame to a latent, a predictor consumes the latent sequence causally and predicts
+each next-step latent from everything before it, and a prediction loss scores that
+next-step latent against the encoder's own (stop-gradient) output for the true next
+frame. Straightness is never architecturally forced --- unlike interpolation-based
+world models, which construct $z_t$ by definition as a point on the line between a start
+and goal latent --- so any straight-line structure this project finds is an emergent
+side effect of latents being easy to predict one step ahead, not a property built into
+the model.
+
+\paragraph{Encoder (\texttt{token\_mode})} Three modes, differing in what a frame is
+encoded from and whether the encoder has any trainable parameters upstream of a frozen
+visual backbone:
+\begin{itemize}
+    \item \texttt{cls} --- the frame's precomputed DINOv2 CLS feature (already one
+    vector per frame) passed through a small MLP head. The DINOv2 backbone itself stays
+    frozen; only this head trains.
+    \item \texttt{raw} --- identical downstream of the feature vector, but the feature
+    itself comes from a small CNN (\texttt{pixel\_encoder}) trained from scratch,
+    jointly with everything downstream of it, directly on raw RGB frames. This is the
+    only mode where the visual backbone itself has gradients; every other mode's
+    "encoder" is strictly a small head on top of an already-frozen feature
+    (Section~\ref{exp:raw-pixel-from-scratch}).
+    \item \texttt{patch} --- the frame's raw DINOv2 \emph{patch} tokens (before any
+    pooling) pass through one of two projectors: \texttt{global}, which pools the whole
+    patch grid down to one vector per frame via strided convolutions (so it behaves like
+    \texttt{cls} downstream); or \texttt{channel}, which projects every patch token
+    independently and keeps the full spatial grid ($P{=}196$ patches, one 8-dimensional
+    vector each) all the way into the predictor. \texttt{channel} is the mode most of
+    this project's collapse/straightness findings are about, since it is the only one
+    where the regularizers' target tensor is a genuine design choice rather than fixed
+    by the architecture (see below).
+\end{itemize}
+
+\paragraph{Predictor} \texttt{cls}/\texttt{raw} share a causal Transformer encoder over
+the per-frame latent sequence. \texttt{patch} uses a block-causal Transformer that
+additionally attends within each frame's patch grid before attending causally across
+frames (a no-op for \texttt{global}, where the grid is already one token). The predictor
+is trained jointly with the encoder head, end to end, on the next-step prediction loss.
+\texttt{window\_size} controls how much history the predictor is trained against:
+\texttt{window\_size=0} (this project's default) trains full-clip causal, every
+next-step in the clip supervised in one forward pass; \texttt{window\_size=3} instead
+trains on a short sliding window (3 frames of history, 1 predicted), the fixed short
+window a temporal-straightening baseline used instead of full-clip supervision. Several
+experiments below sweep this choice directly (Section~\ref{exp:window-vicreg-ablation}).
+
+\paragraph{Aggregation and the regularizers' target tensor} The curvature/straightening
+loss and every anti-collapse regularizer (VICReg, SigReg) need \emph{one} representative
+vector per frame, $z_{\mathrm{agg}}$, not a per-patch grid. For \texttt{cls},
+\texttt{raw}, and \texttt{patch/global}, $z$ is already one token per frame, so
+$z_{\mathrm{agg}}=z$. For \texttt{patch/channel}, $z_{\mathrm{agg}}$ comes from a
+\emph{learnable} aggregation head (a 3-layer MLP over the flattened patch grid, ending in
+LayerNorm) --- not a naive mean-pool over patches, which this project's own reference
+recipe found to underperform the learned head. Critically, VICReg's anti-collapse terms
+can instead be pointed at the \emph{raw per-patch} $z$ before aggregation
+(\texttt{vicreg\_granularity=token}) rather than at $z_{\mathrm{agg}}$
+(\texttt{vicreg\_granularity=agg}) --- the same regularizer weights, applied to two
+different tensors. Which of these two the regularizer sees turns out to matter a great
+deal for whether it actually prevents collapse in the representation the rest of this
+project's metrics are computed on (Section~\ref{exp:window-vicreg-ablation} diagnoses
+this directly; Section~\ref{exp:regularizer-comparison-k400} is the fix).
+
+\paragraph{Loss terms} \texttt{pred\_loss} is the next-step prediction objective itself
+(L1, L2, or an angular/cosine variant), scored against a stop-gradient target so the
+predictor cannot trivially satisfy it by collapsing the encoder. On top of that, this
+project's experiments turn on some subset of:
+\begin{itemize}
+    \item \textbf{Straightening loss} (\texttt{straighten\_weight}) --- penalizes
+    curvature between consecutive step vectors in $z_{\mathrm{agg}}$ (one minus the
+    cosine similarity between adjacent steps); the training-time counterpart of this
+    document's \texttt{trajectory\_straightness}/\texttt{mean\_velocity\_cosine}
+    evaluation metrics.
+    \item \textbf{Chord loss} (\texttt{chord\_weight}) --- ties every step, not just
+    adjacent pairs, to the clip's single global start-to-goal chord direction; the
+    training-time counterpart of \texttt{mean\_chord\_alignment}. Complements the
+    straightening loss rather than replacing it.
+    \item \textbf{VICReg} (\texttt{vicreg\_std\_weight}, \texttt{vicreg\_cov\_weight})
+    --- variance and covariance terms that penalize collapsed (low-variance or
+    correlated) dimensions; the training-time counterpart of this document's
+    \texttt{effective\_rank\_fraction}/collapse diagnostics.
+    \item \textbf{SigReg} (\texttt{sigreg\_weight}) --- a principled alternative to
+    VICReg's two terms, independent of them (either, both, or neither can be active).
+\end{itemize}
+Every regularizer above operates on $z_{\mathrm{agg}}$ by default (the straightening and
+chord losses always do; VICReg's granularity is the one exception, see above), which is
+also the exact tensor every collapse/straightness/temporal-ordering metric in this
+document is computed on for a trained checkpoint --- so a regularizer's effect on
+training loss and its effect on this document's evaluation metrics are, by construction,
+about the same representation.
+
+Let $x_{c,t}\in\mathbb{R}^d$ denote the \emph{raw} (unnormalized) embedding of frame $t$
+in clip $c$, and $z_{c,t}=x_{c,t}/\|x_{c,t}\|_2$ its \emph{L2-normalized} counterpart.
+Every metric below states explicitly whether it is computed on $x$ (raw) or $z$
+(normalized) --- the two are not interchangeable rescalings of one another, since
+normalization is a nonlinear projection onto the unit sphere and changes step-vector
+geometry, not just scale. Unless stated otherwise, a metric is computed per clip and the
+resulting values are averaged across clips, so that long clips do not automatically carry
+more weight.
+
+\subsection{Main metrics}
+
+\subsubsection{Whole-dataset collapse and spread}
+
+\noindent\textbf{Effective rank fraction.} \emph{Raw ($x$), then mean-centered across the
+whole pooled dataset --- not L2-normalized.} Pool every frame's raw embedding across the
+whole evaluation set into one $(N,d)$ matrix, subtract the per-dimension mean over that
+pool, and take its singular values $\sigma_1,\ldots,\sigma_r$. Let
+$p_i=\sigma_i/\sum_j\sigma_j$. The metric is
+\[
+    \frac{\exp\!\left(-\sum_{i=1}^{r}p_i\log p_i\right)}
+         {\min(d,N-1)},
+\]
+where $N$ is the number of pooled frames. It estimates the fraction of available
+dimensions used by the representation. Centering rather than L2-normalizing is
+deliberate: normalizing first would equalize away exactly the kind of per-dimension
+scale collapse this metric is meant to catch. A small value suggests dimensional
+collapse, although a large value alone does not establish that the dimensions carry
+useful information.
+
+\noindent\textbf{Within-clip mean pairwise L2 ($W$).} \emph{Raw ($x$).} Within each
+clip, average $\|x_{c,t}-x_{c,s}\|_2$ over distinct frame pairs, then average the
+resulting values across clips. This measures the amount of variation represented during
+a clip. A very small value can indicate temporal collapse; a large value can also arise
+from frame-level noise.
+
+\noindent\textbf{Across-clip mean pairwise L2 ($B$).} \emph{Raw ($x$).} Average
+$\|x_{c,t}-x_{c',s}\|_2$ over sampled frames from different clips, $c\neq c'$. This
+supplies a dataset-specific reference for $W$: it shows the scale of differences between
+clips in the same embedding space. Sampling clips evenly avoids giving long clips
+excessive weight.
+
+\noindent\textbf{Across-minus-within gap.}
+Report $B-W$. A positive gap means that cross-clip pairs are farther
+apart on average than within-clip pairs. This describes separation,
+but does not by itself show whether that separation represents action
+semantics, background, or clip identity.
+
+\subsubsection{Trajectory geometry}
+
+\noindent\textbf{Trajectory straightness.} \emph{L2-normalized ($z$).} Set
+$v_t=z_{t+1}-z_t$ and compute
+\[
+    \frac{\|z_T-z_1\|_2}
+         {\sum_{t=1}^{T-1}\|v_t\|_2}.
+\]
+The value approaches one when the path follows a direct route from
+start to end and falls when it bends or backtracks. It should be read
+alongside displacement: an almost stationary clip has little meaningful
+trajectory geometry.
+
+\noindent\textbf{Mean velocity cosine.} \emph{L2-normalized ($z$): frames are
+unit-normalized before the step vectors $v_t$ are formed.} Average $\cos(v_t,v_{t+1})$
+over consecutive nonzero steps. Positive values mean successive steps tend to point in
+similar directions; negative values indicate local turning or backtracking. Because
+short steps can make directions sensitive to noise, this metric is most informative
+when displacement is appreciable.
+
+\noindent\textbf{Start--end displacement.} \emph{L2-normalized ($z$).} Compute
+$\|z_T-z_1\|_2$, the direct distance between the first and last frame's normalized
+embedding. This measures net movement rather than the total distance travelled. It
+helps distinguish a genuinely directed trajectory from one that looks straight only
+because it barely moves.
+
+\noindent\textbf{Direction reversal fraction.} \emph{Raw ($x$) --- unlike the other
+three trajectory-geometry metrics above, this one is \underline{not} computed on
+L2-normalized embeddings.} Set $u_t=x_{t+1}-x_t$ and compute the fraction of consecutive
+nonzero step pairs satisfying $u_t^\top u_{t+1}<0$. Each such pair turns by more than
+$90^\circ$, so a high fraction indicates frequent local reversals. It is a thresholded
+companion to the raw velocity-cosine variant below and can increase when small steps are
+noisy.
+
+\subsubsection{Temporal order}
+
+\noindent\textbf{Time-progress Spearman.} \emph{L2-normalized ($z$).} Let
+$u=z_T-z_1$ be the start--end chord and define the signed scalar projection
+$p_t=(z_t-z_1)^\top u/\|u\|_2^2$, scaled so that $p_1=0$ and $p_T=1$. Compute Spearman's
+rank correlation between frame index $t$ and $p_t$. Note this is projection onto the
+chord direction, \emph{not} raw distance from the start frame: a frame can sit far from
+$z_1$ in Euclidean terms while still projecting close to $0$ if its displacement is
+mostly orthogonal to the chord. A high value means frames generally advance along the
+start--end direction as time progresses, even if the relationship is nonlinear.
+
+\noindent\textbf{Distance-to-goal Spearman.} \emph{Raw ($x$) --- unlike time-progress
+Spearman above, this one is \underline{not} L2-normalized.} Compute Spearman's rank
+correlation between $t$ and $-\|x_t-x_T\|_2$. A high value means frames generally
+approach the final frame's raw embedding as time advances. Using the negative distance
+makes higher values consistently indicate better ordinality.
+
+\noindent\textbf{Adjacent temporal nearest-neighbor fraction.} \emph{L2-normalized
+($z$); nearest-neighbor search uses cosine similarity, i.e.\ the dot product between
+unit-norm embeddings.} For each frame, find its nearest other frame within the same clip
+and record whether that frame is at $t-1$ or $t+1$. Average the resulting indicators
+across frames and then clips. A high value indicates local temporal continuity, although
+smooth nuisance changes can also produce nearby-frame neighbors.
+
+\subsubsection{Cross-clip temporal consistency}
+
+\noindent\textbf{Mean TCC Kendall tau.} \emph{Raw ($x$), but each clip is first
+mean-centered over its own $T$ frames --- not L2-normalized.} For each clip $c$, let
+$\bar{x}_c$ be its mean embedding over time and define $\tilde{x}_{c,t}=x_{c,t}-\bar{x}_c$.
+Centering removes each clip's static content (object, background), leaving only motion
+relative to that clip's own average; without it, matches would mostly reflect shared
+appearance rather than shared timing. For random same-label clip pairs $(A,B)$ drawn
+from different source videos, match each frame of $A$ to its nearest frame of $B$ by raw
+Euclidean distance on the centered embeddings. Compute Kendall's tau between $A$'s
+chronological frame order and the order of its matches in $B$, then average over sampled
+pairs. Values near one indicate order-preserving alignment; values near zero indicate
+little consistent ordering. This tests agreement between clips, which the within-clip
+metrics above cannot measure.
+
+\subsubsection{Semantic information}
+
+\noindent\textbf{Chirality mean accuracy.} \emph{Raw ($x$); no per-example
+normalization anywhere in this probe.} For each chiral triplet, concatenate all $T$
+frames of a clip in temporal order into one $(T{\cdot}d)$-dimensional raw vector, fit a
+binary classifier per triplet to distinguish forward from reversed clips on that
+triplet's training clips, and score held-out accuracy, averaged over triplets. Accuracy
+above chance indicates that temporal direction is recoverable from the raw embeddings;
+it does not establish that the representation identifies the underlying action.
+
+\noindent\textbf{kNN balanced accuracy, per semantic probe.} \emph{Built from raw
+embeddings, then L2-normalized.} Each clip is first reduced to a raw \emph{content}
+vector (mean over frames) and/or \emph{change} vector (mean of the last few frames minus
+mean of the first few), then each vector is separately L2-normalized before the nearest
+neighbor search (so content and change contribute equally when concatenated). Predict
+held-out labels using the $k$ nearest training embeddings by cosine similarity and report
+the mean recall across classes: $\mathrm{BA}=K^{-1}\sum_{j=1}^{K}\mathrm{recall}_j$. This
+tests whether examples with the same label form useful local neighborhoods. Balanced
+accuracy prevents large classes from dominating the score.
+
+\noindent\textbf{Linear balanced accuracy, per semantic probe.} \emph{Built from the
+same raw content/change vectors as the kNN probe above, but \underline{without} any
+per-example L2 normalization; each feature dimension is instead standardized to zero
+mean and unit variance across the training set.} Fit a linear classifier on these
+standardized training embeddings and report the same mean-per-class recall on held-out
+data. This tests whether the label is accessible through a simple linear decision
+boundary. Using the same data split for kNN and linear probes makes their scores
+comparable.
+
+\subsection{Additional metrics}
+
+\subsubsection{Trajectory geometry and raw variants}
+
+\noindent\textbf{Mean chord alignment.} \emph{L2-normalized ($z$).}
+Let $d=z_T-z_1$ be the start-to-end chord. Average $\cos(v_t,d)$
+over nonzero steps when $d\neq0$. A high value means that individual
+steps tend to advance in the overall direction of the clip; low or
+negative values expose detours that the endpoint distance alone hides.
+
+\noindent\textbf{Raw trajectory variants.} \emph{Raw ($x$) --- these are the raw
+counterparts of exactly three of the four Main Metrics trajectory-geometry entries
+above.} Recompute straightness, velocity cosine, and chord alignment using $x_t$ instead
+of $z_t$. (Direction reversal fraction has no separate ``normalized'' pairing --- it is
+raw-only and already reported under Main Metrics; start--end displacement has no
+separate raw pairing --- it is normalized-only and already reported there too. Only
+straightness, velocity cosine, and chord alignment are computed in both forms.) These
+raw variants show how changes in embedding norm affect trajectory geometry: since
+L2-normalization is a nonlinear projection, the raw and normalized versions of a given
+metric are genuinely different quantities, not rescaled copies of one another.
+Differences between them indicate that magnitude, rather than direction alone,
+contributes to the measured motion.
+
+\subsubsection{Raw embedding magnitude}
+
+\noindent\textbf{Norm growth.} \emph{Raw ($x$).}
+Compute $\|x_T\|_2/\|x_1\|_2$ for each clip. Values above one indicate
+that embedding magnitude increases from start to end. This can reveal
+systematic norm drift that unit normalization hides.
+
+\noindent\textbf{Norm standard deviation within a clip.} \emph{Raw ($x$).}
+Compute the standard deviation of
+$\{\|x_t\|_2:t=1,\ldots,T\}$. It measures how strongly embedding
+magnitude fluctuates during a clip, including changes that may not be
+visible in endpoint norm growth.
+
+\noindent\textbf{Adjacent L2 distance.} \emph{Raw ($x$).}
+Average $\|x_{t+1}-x_t\|_2$ over adjacent frames. This gives the
+absolute size of raw frame-to-frame changes. Comparing it with
+normalized trajectory metrics helps identify changes driven mainly by
+embedding magnitude.
+
+\noindent\textbf{Mean norm.} \emph{Raw ($x$), whole-dataset --- no centering (unlike
+effective rank fraction above) and no L2 normalization.} Pool every frame's raw
+embedding across the whole evaluation set and report $\mathbb{E}[\|x_{c,t}\|_2]$. This is
+a direct magnitude scale reference for the whole representation, distinct from
+per-clip norm growth/std above (which look at variation \emph{within} a clip) and from
+effective rank fraction (which measures spread \emph{after} centering out the mean).
+
+\subsubsection{Change-direction consistency}
+
+\noindent\textbf{Change-direction gap.} \emph{Change vector built from raw ($x$)
+embeddings, then L2-normalized only at the similarity-comparison step.} Define each
+clip's change vector as the raw difference between its late-clip and early-clip mean
+embedding, averaged over the last and first $e$ frames respectively (default $e=4$, to
+reduce sensitivity to single-frame noise):
+\[
+    \Delta_c = \frac{1}{e}\sum_{t=T-e+1}^{T} x_{c,t} \;-\; \frac{1}{e}\sum_{t=1}^{e} x_{c,t}.
+\]
+For the cosine comparisons below, each $\Delta_c$ is L2-normalized; the raw (unnormalized)
+$\Delta_c$ itself is not otherwise rescaled. Subtract the mean cosine between change
+vectors from different labels from the mean cosine between vectors sharing a label:
+\[
+    G_{\mathrm{change}}
+    =\mathbb{E}[\cos(\Delta_c,\Delta_{c'})\mid y_c=y_{c'}]
+    -\mathbb{E}[\cos(\Delta_c,\Delta_{c'})\mid y_c\neq y_{c'}].
+\]
+A positive gap indicates that clips with the same label tend to move
+in similar directions, beyond the similarity observed between labels.
+\subsection{Data}
+[Datasets used, preprocessing, splits.]
+
+\subsection{Approach}
+
+\subsection{Motivating Pilot: Does Straightening Create Recoverable Headroom?}
+\label{sec:methodology-straightening-poc}
+
+Before committing to a curvature/straightening regularizer (\texttt{straighten\_weight}
+in the predictive world model), we first checked whether curvature is actually a
+limiting factor for recovering intermediate latents from just a start and goal frame ---
+as opposed to model capacity, data, or optimization.
+
+\paragraph{Setup} Used raw, untouched DINOv2 features on real SSv2 clips (no encoder
+training, no PWM model). Two target conditions, same real $z_1, z_T$ endpoints in both:
+\begin{itemize}
+    \item \textbf{REAL} --- the target for frame $t$ is the clip's actual DINOv2 feature.
+    \item \textbf{STRAIGHT} --- the target for frame $t$ is the point that lands exactly
+    on the straight line between the same real endpoints,
+    $z_1 + \tfrac{t}{15}(z_T - z_1)$: a synthetic, perfectly straight trajectory anchored
+    to the same start/goal as REAL.
+\end{itemize}
+For each condition, trained a fresh predictor (input: only $z_1, z_T$; output: the whole
+intermediate sequence) with identical architecture, optimizer, and a 40-epoch budget ---
+only the target differs. Repeated for both predictor architectures from
+\texttt{interpolation\_planning} (\texttt{mlp}: independent per-position feedforward,
+no cross-position interaction; \texttt{transformer}: bidirectional self-attention, every
+filled-in position can attend to every other). Measured recovery on held-out clips.
+
+\paragraph{Result}
+
+\begin{table}[H]
+\centering
+\caption{Recovery of intermediate latents from $(z_1, z_T)$ alone: real (curved) vs.\
+straightened targets, raw DINOv2, SSv2.}
+\label{tab:straightening-poc}
+\begin{tabular}{lcc}
+\toprule
+Comparison & cosine\_sim (median) & $R^2$ \\
+\midrule
+Original (real) vs.\ interpolated (straight-line, no training) & 0.878 & 0.657 \\
+MLP trained $\to$ REAL & 0.774 & 0.506 \\
+MLP trained $\to$ STRAIGHT & 0.911 & 0.766 \\
+Transformer trained $\to$ REAL & 0.830 & 0.591 \\
+Transformer trained $\to$ STRAIGHT & 0.963 & 0.895 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Conclusion}
+
+\textbf{The REAL/STRAIGHT gap isolates curvature as the cause, not capacity or
+optimization.} Input, architecture, and training budget are identical between the two
+conditions for a given architecture --- only whether the target is the genuinely curved
+real trajectory or a synthetic straight one changes. Since STRAIGHT is recovered far
+better in both architectures ($+0.260$ $R^2$ for MLP, $+0.304$ for Transformer), the gap
+is attributable to curvature in the real DINOv2 trajectories that a predictor at this
+budget cannot make up for --- not to the model failing to fit or generalize.
+
+\textbf{This sets a concrete ceiling for what straightening could buy.} At fixed
+capacity and budget, the STRAIGHT numbers ($R^2$ 0.766--0.895) are the headroom a
+perfect straightening objective could hope to convert into planning accuracy on this
+encoder and data, assuming straightening doesn't itself destroy the endpoints'
+identity/content information --- a caveat worth checking directly (e.g.\ against the
+semantic probes in \texttt{representation\_probes}) rather than assumed.
+
+\textbf{Architecture and target-straightness effects compound rather than substitute.}
+The Transformer/MLP gap is small on REAL (0.591 vs.\ 0.506, $\Delta=0.085$) but much
+larger on STRAIGHT (0.895 vs.\ 0.766, $\Delta=0.129$). The extra capacity from full
+self-attention across positions is more useful once the target is actually learnable
+straight-line structure --- on the curved real target, that extra capacity has less to
+exploit.
+
+\textbf{Neither trained model has yet beaten naive interpolation on the real, curved
+trajectory.} The no-training linear-interpolation baseline ($R^2=0.657$) outperforms
+\emph{both} trained-on-REAL conditions (MLP 0.506, Transformer 0.591) --- a trained
+model has not yet added value over simple interpolation for the actual (non-straightened)
+planning task.
+
+\textbf{Net read.} This justifies pursuing the curvature/straightening regularizer as
+targeting a real, non-trivial source of error rather than a null effect --- but only
+demonstrates the \emph{ceiling}, on frozen, untouched DINOv2 features. It does not yet
+show that an encoder trained with that regularizer reaches this ceiling without
+collapsing to get there (the same caveat flagged for V-JEPA2/V-JEPA2.1 in
+Section~\ref{sec:results-summary}).
+

@@ -1,0 +1,88 @@
+# token_mode=patch, projector_type=channel: raw DINOv2 patch tokens -> ChannelProjector
+# (ported from external/temporal-straightening, see models/projectors.py) -> full patch
+# grid kept (196 tokens/frame, only channel depth crushed 384->8) -> BlockCausalPredictor
+# (dense attention within a frame's own patches, causal across frames; reference-exact
+# internals, NOT cls-mode's CausalPredictor -- see world_model.py's docstring).
+#
+# num_patches=196 must match patch_img_size/14 squared exactly (196/14=14, 14*14=196) --
+# it's fixed at model-construction time, not inferred from data (see
+# ProceduralWorldModel's docstring for why), and matches the reference's own Table 1
+# "14x14x8" dims exactly.
+#
+# Substantially heavier than patch_global: predictor operates on a
+# n_frames*196-token sequence per clip (3136 tokens at the n_frames=16/window_size=0
+# default) through a depth=6/dim_head=64/heads=16 transformer, and precomputed/
+# live-cached features are ~50x bigger per video than cls mode. Set window_size>0 (e.g.
+# 3, the reference's own num_hist) to cut this down to (window_size+1)*196 tokens/clip
+# if training is too slow/memory-heavy at the full n_frames.
+
+feature_dim: 384
+latent_dim: 384        # unused by projector_type=channel (kept at its default) -- the
+                       # actual output/predictor dim here is channel_out_dim below
+channel_out_dim: 8
+channel_hidden: 192
+num_patches: 196
+token_mode: patch
+projector_type: channel
+patch_hub_id: dinov2_vits14   # reference: conf/encoder/dino_channel.yaml's name="dinov2_vits14"
+                               # -- NO registers (dinov2_vits14_reg is a different pretrained
+                               # checkpoint, not just extra output tokens)
+patch_img_size: 196    # -> 14x14=196 patch grid, matching the reference's Table 1 dims
+                       # exactly (see patch_global.yaml's comment for the full rationale)
+n_frames: 16
+
+# Predictor hyperparameters -- match external/temporal-straightening/conf/predictor/
+# vit.yaml exactly (the reference uses this SAME config for every encoder mode).
+depth: 6
+heads: 16
+dim_head: 64           # independent of channel_out_dim=8 -- see
+                       # models/block_causal_predictor.py for why that matters
+mlp_dim: 2048
+dropout: 0.1
+emb_dropout: 0.0
+
+# Aggregation head (curvature/VICReg regularizer input) -- reference: conf/encoder/
+# dino_channel.yaml's agg_type=mlp, agg_mlp_hidden_dim=512, agg_out_dim=128. Built and
+# wired automatically for projector_type=channel, no extra config needed beyond these two.
+# agg_mlp_hidden_dim left unset would fall back to 4 * agg_out_dim (= 512 here, the
+# reference's own fallback); set explicitly anyway, as the reference's config does.
+agg_mlp_hidden_dim: 512
+agg_out_dim: 128
+
+# 0 (default): train causally over the whole n_frames clip in one pass (every next-step
+# supervised per clip). >0: match the reference's actual training regime instead --
+# fixed (window_size+1)-frame windows per example (reference: num_hist=3, num_pred=1),
+# and also substantially cheaper (see the heaviness note above). See data/dataset.py's
+# window_size / train.py's --window-size for the mechanics.
+window_size: 0
+
+# Reference's main-experiment collapse-prevention recipe is stop-grad ONLY (Sec 3.3
+# "Collapse prevention": "We use stop-grad for major experiments... [VICReg] is
+# orthogonal to these anti-collapse methods and CAN be combined" -- i.e. optional, not
+# part of the main method). vicreg_*_weight left at 0 to match. The curvature loss
+# above (straighten_weight) is computed on ProceduralWorldModel.agg_head's output (the
+# 3-layer MLP + LayerNorm above), NOT a naive mean-pool over the 196-patch grid.
+# pred_loss is always MSE in the reference (nn.MSELoss(), no L1 option).
+pred_loss: l2
+pred_weight: 1.0
+straighten_weight: 0.1
+vicreg_std_weight: 0.0
+vicreg_cov_weight: 0.0
+# agg: VICReg on the agg head's per-frame output (same input as the curvature loss).
+# token: on the raw (B,T,196,8) per-patch latents, every token a sample -- what the
+# reference itself does (VWorldModel's vcreg uses visual_prop(z), never agg()).
+vicreg_granularity: agg
+chord_weight: 0.0      # off by default -- see losses/world_model_loss.py's chord_loss.
+                       # Ties every step to the clip's global start->end chord direction,
+                       # not just adjacent steps to each other like straighten_weight does.
+stop_grad: true
+grad_clip: 1.0
+
+# Per-module learning rates -- reference Table 3: Spatial Projector lr=1e-5,
+# Predictor lr=5e-4. encoder_lr covers encoder+projector+agg_head together (train.py's
+# build_optimizer folds agg_head into the encoder group, matching the reference's own
+# DinoV2Encoder.agg_mlp being a submodule of the SAME class as its projector, hence
+# sharing its optimizer). Leaving both unset would silently fall back to a single --lr
+# for the whole model instead.
+encoder_lr: 1e-5
+predictor_lr: 5e-4

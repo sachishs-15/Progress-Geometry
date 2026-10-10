@@ -1,0 +1,220 @@
+\subsection{Batch Size $\times$ Regularizer Ablation (CLS-MLP, K400)}
+\label{exp:bs-regularizer-clsmlp}
+
+\paragraph{What we tried} Six CLS residual-MLP predictive-world-model checkpoints on
+K400 (DINOv2 CLS features $\to$ residual-MLP encoder, \texttt{token\_mode=cls},
+\texttt{window\_size=0}: \texttt{pwm\_cls\_residual\_mlp\_paper\_window0}[\_sigreg/\_vicreg]
+for batch size 32, \texttt{pwm\_cls\_residual\_mlp\_bs512}[\_sigreg/\_vicreg] for batch
+size 512), crossing batch size (32 vs.\ 512) with regularizer (none, SigReg, VICReg),
+\texttt{straighten\_weight=0.1} throughout --- the same weight used in the
+patch-channel family. Scored the same full metric suite from
+Section~\ref{sec:methodology} (Main and Additional), and compared each loss component
+from epoch 0 to that run's selected best epoch (out of 49 logged).
+
+\paragraph{Result}
+
+\begin{table}[H]
+\centering
+\caption{Main metrics, CLS residual-MLP K400.}
+\label{tab:bs-reg-clsmlp-main}
+\footnotesize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcccccc}
+\toprule
+Metric & bs32:none & bs32:sigreg & bs32:vicreg & bs512:none & bs512:sigreg & bs512:vicreg \\
+\midrule
+\multicolumn{7}{l}{\textit{Whole-dataset collapse and spread}} \\
+effective\_rank\_fraction & 0.7310 & \good{0.8210} & \good{0.8230} & 0.7710 & \good{0.8150} & \good{0.8380} \\
+$W$ (within-clip mean pairwise L2) & 2.3300 & 14.0300 & 12.8000 & 1.7100 & 13.3600 & 14.0400 \\
+$B$ (across-clip mean pairwise L2) & 4.9200 & 26.8800 & 25.1600 & 3.5700 & 26.6000 & 27.3000 \\
+$B-W$ (gap) & 2.5900 & 12.8500 & 12.3600 & 1.8600 & 13.2400 & 13.2600 \\
+\midrule
+\multicolumn{7}{l}{\textit{Trajectory geometry}} \\
+trajectory\_straightness ($z$) & \good{0.1563} & \bad{0.1303} & \bad{0.1327} & \good{0.1492} & \bad{0.1324} & \bad{0.1304} \\
+mean\_velocity\_cosine ($z$) & -0.2383 & \bad{-0.2705} & \bad{-0.2679} & -0.2461 & \bad{-0.2673} & \bad{-0.2711} \\
+start\_end\_displacement ($z$) & 0.1570 & 0.8720 & 0.7960 & 0.1130 & 0.8320 & 0.8570 \\
+direction\_reversal\_fraction ($x$) & \good{0.8160} & \bad{0.9080} & \bad{0.9050} & \good{0.8420} & \bad{0.9030} & \bad{0.9110} \\
+\midrule
+\multicolumn{7}{l}{\textit{Temporal order}} \\
+time\_progress\_spearman ($z$) & \bad{0.8430} & 0.9060 & 0.9060 & \bad{0.8640} & 0.9060 & 0.9080 \\
+distance\_to\_goal\_spearman ($x$) & \good{0.6290} & \bad{0.5830} & \bad{0.5940} & \good{0.6320} & \bad{0.5930} & \bad{0.5900} \\
+adjacent\_temporal\_nn\_fraction ($z$) & 0.7581 & 0.7896 & 0.7899 & 0.7694 & 0.7894 & 0.7912 \\
+\midrule
+\multicolumn{7}{l}{\textit{Cross-clip temporal consistency}} \\
+tcc\_kendall\_tau (mean) & 0.0800 & 0.0573 & 0.0600 & 0.0818 & 0.0617 & 0.0580 \\
+\midrule
+\multicolumn{7}{l}{\textit{Semantic information}} \\
+chirality.mean\_accuracy ($x$) & 0.7880 & 0.7780 & 0.7910 & \good{0.8070} & 0.7890 & 0.7870 \\
+content.knn.balanced\_acc & 0.1670 & 0.2020 & 0.1690 & 0.1500 & 0.1890 & 0.1930 \\
+content.linear.balanced\_acc & 0.2290 & 0.2360 & 0.2340 & 0.2390 & 0.2360 & 0.2300 \\
+change.knn.balanced\_acc & 0.2880 & 0.3230 & 0.3140 & 0.2930 & 0.3220 & 0.3210 \\
+change.linear.balanced\_acc & 0.3380 & 0.3610 & 0.3670 & 0.3560 & 0.3650 & 0.3690 \\
+content+change.knn.balanced\_acc & 0.2906 & 0.3354 & 0.3358 & 0.3013 & 0.3387 & 0.3307 \\
+content+change.linear.balanced\_acc & 0.4802 & 0.4949 & 0.4938 & 0.4978 & 0.5032 & 0.4878 \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Additional metrics, CLS residual-MLP K400 --- same six checkpoints as
+Table~\ref{tab:bs-reg-clsmlp-main}.}
+\label{tab:bs-reg-clsmlp-additional}
+\footnotesize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcccccc}
+\toprule
+Metric & bs32:none & bs32:sigreg & bs32:vicreg & bs512:none & bs512:sigreg & bs512:vicreg \\
+\midrule
+\multicolumn{7}{l}{\textit{Trajectory geometry and raw variants}} \\
+mean\_chord\_alignment ($z$) & 0.1244 & 0.1113 & 0.1128 & 0.1224 & 0.1128 & 0.1117 \\
+trajectory\_straightness\_raw ($x$) & 0.1560 & 0.1300 & 0.1330 & 0.1490 & 0.1320 & 0.1300 \\
+mean\_velocity\_cosine\_raw ($x$) & -0.2380 & -0.2710 & -0.2680 & -0.2460 & -0.2670 & -0.2710 \\
+mean\_chord\_alignment\_raw ($x$) & 0.1240 & 0.1110 & 0.1130 & 0.1220 & 0.1130 & 0.1120 \\
+\midrule
+\multicolumn{7}{l}{\textit{Raw embedding magnitude}} \\
+norm\_growth ($x$) & 1.0001 & 0.9999 & 1.0000 & 1.0000 & 1.0000 & 1.0000 \\
+norm\_std\_within\_clip ($x$) & 0.0051 & 0.0111 & 0.0044 & 0.0014 & 0.0022 & 0.0028 \\
+mean\_norm ($x$) & 20.06 & 19.38 & 19.63 & 19.87 & 19.55 & 19.80 \\
+\midrule
+\multicolumn{7}{l}{\textit{Change-direction consistency}} \\
+change\_direction.gap & 0.0420 & 0.0341 & 0.0350 & 0.0406 & 0.0360 & 0.0326 \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Best-epoch selection (of 49 logged).}
+\label{tab:bs-reg-clsmlp-bestepoch}
+\begin{tabular}{lcc}
+\toprule
+Checkpoint & Best epoch & Total logged \\
+\midrule
+bs32:none & 7 & 49 \\
+bs32:sigreg & 49 & 49 \\
+bs32:vicreg & 1 & 49 \\
+bs512:none & 49 & 49 \\
+bs512:sigreg & 49 & 49 \\
+bs512:vicreg & 48 & 49 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Loss components, epoch 0 $\to$ best epoch.}
+\label{tab:bs-reg-clsmlp-losses}
+\footnotesize
+\begin{tabular}{llccc}
+\toprule
+Checkpoint & Component & Epoch 0 & Best epoch & Change \\
+\midrule
+\multirow{3}{*}{bs32:none}
+ & train\_pred & 0.302 & 0.009 & $\downarrow$97\% \\
+ & train\_straighten & 1.335 & 1.319 & $\downarrow$1\% (flat) \\
+ & train\_total & 0.436 & 0.141 & $\downarrow$68\% \\
+\midrule
+\multirow{4}{*}{bs32:sigreg}
+ & train\_pred & 0.339 & 0.348 & $\uparrow$3\% (worse) \\
+ & train\_straighten & 1.336 & 1.343 & $\uparrow$1\% (worse) -- dec. actually (logging error)\\
+ & train\_sigreg & 5.438 & 5.438 & 0\% (frozen) \\
+ & train\_total & 1.729 & 1.332 & $\downarrow$23\% \\
+\midrule
+\multirow{5}{*}{bs32:vicreg}
+ & train\_pred & 0.292 & 0.293 & 0\% (flat) \\
+ & train\_straighten & 1.337 & 1.339 & 0\% (flat) \\
+ & train\_vicreg\_std & 0.124 & 0.111 & $\downarrow$10\% \\
+ & train\_vicreg\_cov & 5.260 & 4.619 & $\downarrow$12\% \\
+ & train\_total & 0.760 & 0.722 & $\downarrow$5\% \\
+\midrule
+\multirow{3}{*}{bs512:none}
+ & train\_pred & 0.441 & 0.006 & $\downarrow$99\% \\
+ & train\_straighten & 1.336 & 1.324 & $\downarrow$1\% (flat) \\
+ & train\_total & 0.574 & 0.139 & $\downarrow$76\% \\
+\midrule
+\multirow{4}{*}{bs512:sigreg}
+ & train\_pred & 0.451 & 0.296 & $\downarrow$34\% \\
+ & train\_straighten & 1.336 & 1.338 & 0\% (flat) \\
+ & train\_sigreg & 264.3 & 16.4 & $\downarrow$94\% (real convergence) \\
+ & train\_total & 27.00 & 2.071 & $\downarrow$92\% \\
+\midrule
+\multirow{5}{*}{bs512:vicreg}
+ & train\_pred & 0.447 & 0.347 & $\downarrow$22\% \\
+ & train\_straighten & 1.336 & 1.343 & $\uparrow$1\% (worse) \\
+ & train\_vicreg\_std & 0.067 & 0.005 & $\downarrow$92\% \\
+ & train\_vicreg\_cov & 2.303 & 0.778 & $\downarrow$66\% \\
+ & train\_total & 0.739 & 0.518 & $\downarrow$30\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Inference}
+
+\textbf{This checks whether the collapse-vs-straightness tension seen in the last three
+experiments is specific to the patch-channel architecture, or shows up in a completely
+different encoder too.} All three prior experiments used \texttt{token\_mode=patch},
+\texttt{projector\_type=channel} --- a spatial, multi-token-per-frame representation.
+This experiment switches to a CLS residual-MLP encoder (one token per frame by
+construction, no aggregation head, no \texttt{vicreg\_granularity} choice to get wrong)
+and crosses batch size (32 vs.\ 512) with the same three regularizer settings.
+
+\textbf{Collapse without regularization is far milder here, and \texttt{effective\_rank\_fraction}
+gets colored on both ends.} Both no-regularizer configs (bs32:none 0.731, bs512:none
+0.771) sit close to \emph{both} DINOv2 baselines --- bs32:none is red (just below the
+lower baseline), bs512:none is uncolored (between the two, mixed) --- nothing close to
+the patch-channel \texttt{noreg} checkpoint's 0.008--0.018 red-across-the-board collapse
+two experiments ago. All four regularized configs are green, clearly beating both
+baselines (0.815--0.838). Regularization still helps here, but it's the difference
+between "fine" and "slightly better," not "collapsed" and "healthy."
+
+\textbf{The same straightness/regularization tension still shows up, in miniature, with
+the colors flipping the same way as every patch-channel experiment.}
+\texttt{trajectory\_straightness} is green for both no-regularizer configs (bs32:none
+0.1563, bs512:none 0.1492) and red for all four regularized ones (0.130--0.132);
+\texttt{direction\_reversal\_fraction} follows the identical pattern in the same
+direction. This is the same tension confirmed independently in a different encoder
+architecture, just at much smaller magnitude since nothing here starts severely
+collapsed.
+
+\textbf{bs512:none is the first --- and so far only --- trained checkpoint in this log to
+beat both baselines on \texttt{chirality.mean\_accuracy}.} 0.8070, green, ahead of
+DINOv2\textsubscript{CLS}'s 0.7993 and DINOv2\textsubscript{mean}'s 0.7763, while also
+sitting in the uncolored middle ground on \texttt{effective\_rank\_fraction} (0.771,
+not collapsed) and green on \texttt{trajectory\_straightness}/\texttt{direction\_reversal\_fraction}.
+Every regularized config in this whole log so far has traded chirality away for fixed
+collapse (Section~\ref{exp:regularizer-comparison-k400}: 0.52--0.58, all red); this is
+the first checkpoint to look reasonable on rank, straightness, \emph{and} chirality at
+once, without an explicit anti-collapse regularizer at all.
+
+\textbf{The two temporal-ordering metrics dissociate in opposite directions, and this
+time \texttt{distance\_to\_goal\_spearman} sides with the no-regularizer configs, not
+against them.} \texttt{time\_progress\_spearman} improves with regularization (bs32:none
+0.843 and bs512:none 0.864, both red; all four regularized configs 0.906--0.908,
+uncolored --- close to baseline but not quite over 0.9114). \texttt{distance\_to\_goal\_spearman}
+moves the opposite way: bs32:none (0.629) and bs512:none (0.632) are \emph{green},
+clearly beating both DINOv2 baselines, while all four regularized configs are red
+(0.583--0.594). So the same two checkpoints that win on chirality and straightness ---
+the no-regularizer configs --- also win on \texttt{distance\_to\_goal\_spearman}
+specifically, even though they lose on \texttt{time\_progress\_spearman}. Regularization
+buys classical ordinal ranking here at a direct cost to the goal-distance signal, the
+same shape of trade-off seen in the straighten-weight sweep, just split across two
+different checkpoint families instead of one continuous dial.
+
+\textbf{\texttt{train\_straighten} never meaningfully improves in any of the six --- this
+is now the norm for this recipe, not an isolated outlier.} The largest movement is
+$-1\%$; two configs (bs32:sigreg, bs512:vicreg) end up worse than they started. This
+matches the sw0.1 failure case from the previous experiment exactly, but shown here
+across an entire family regardless of encoder architecture, batch size, or regularizer
+choice --- \texttt{straighten\_weight=0.1} against \texttt{pred\_weight=1.0} appears
+systematically too weak to make real progress on its own objective in this recipe,
+independent of everything else tested across this log.
+
+\textbf{Two configs select a very early best epoch --- worth checking directly.}
+bs32:none (epoch 7) and bs32:vicreg (epoch 1) both select their best checkpoint far
+earlier than the other four (epoch 48--49), echoing the early-divergence pattern from
+the window/VICReg ablation two experiments back, though without that experiment's
+post-best-epoch loss values to confirm whether these two diverge afterward or simply
+plateau.

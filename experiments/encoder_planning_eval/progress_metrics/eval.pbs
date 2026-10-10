@@ -1,0 +1,32 @@
+#!/bin/bash
+#PBS -N ordinal_eval
+#PBS -l select=1:ncpus=16:mem=32gb
+#PBS -l walltime=4:00:00
+#PBS -o /home/sachish/proc-planning/experiments/encoder_planning_eval/progress_metrics/pbslogs/
+#PBS -e /home/sachish/proc-planning/experiments/encoder_planning_eval/progress_metrics/pbslogs/
+
+# CPU-only progress_metrics evaluation over every (dataset, split) combination this
+# project has trained on -- run as a PBS job rather than a login-node background
+# process because the latter dies the instant the driving shell session ends (learned
+# the hard way: an earlier eval was silently killed mid-run with 0 rows written and no
+# error, since a plain background subprocess is reaped along with its parent's process
+# tree, unlike a PBS job).
+for _ in $(seq 150); do [ -r /mnt/rdata7/proprogress/data ] && break; sleep 2; done
+
+cd /home/sachish/proc-planning/experiments/encoder_planning_eval/progress_metrics
+PYTHON=/home/sachish/.conda/envs/lift/bin/python
+
+run() {
+    name=$1; spec=$2
+    echo "=== $name ==="
+    taskset -c 0-15 "$PYTHON" run_progress_metrics_batch.py \
+        --spec "$spec" --results-dir "results/$name" \
+        --csv-out "results/${name}_summary.csv" --workers 4
+}
+
+run ordinal_val    ordinal_val.json
+run ordinal_train  ordinal_train.json
+run ego4dgoal_val  ego4dgoal_val.json
+run ego4dgoal_train ego4dgoal_train.json
+
+echo "ALL EVALS DONE"

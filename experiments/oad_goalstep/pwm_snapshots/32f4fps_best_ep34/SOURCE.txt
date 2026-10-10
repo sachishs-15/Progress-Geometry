@@ -1,0 +1,1 @@
+best.ckpt of pwm_patch_channel_paper_window0_vicreg_ego4dgoal_32f4fps, epoch field 34, copied Wed Oct  7 11:44:54 AM +08 2026

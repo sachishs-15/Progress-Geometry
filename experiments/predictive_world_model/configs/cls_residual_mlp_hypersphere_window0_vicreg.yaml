@@ -1,0 +1,60 @@
+# cls residual-MLP, window_size=0, HYPERSPHERE norm + VICReg (std 1.0 / cov 0.04).
+#
+# This arm is a DIAGNOSTIC, not a favourite. VICReg's std term is close to inert on
+# unit-norm data: sweeping an ideal spread to total collapse it moves only 0.948 ->
+# 0.990, because after projection every coordinate has variance ~1/d however bunched the
+# directions are (tests/test_model.py pins this). Its cov term is also near-zero on
+# normalized inputs for the same reason. So the prediction is that this behaves much
+# like the no-regularizer arm; if it does, that is direct evidence VICReg is the wrong
+# tool once z is on a sphere, which is the claim _uniformity.yaml exists to test the
+# other side of.
+#
+# Everything below matches the cls_residual_mlp_paper_window0* family exactly except
+# norm_type (and the regularizer line this variant is named for), so those runs are the
+# LayerNorm control for these. pred_loss stays l2 rather than switching to the new
+# `angular`: that would change two things at once, and isolating norm_type is the point.
+# Flipping it to `angular` is a one-line follow-up and is the geometrically matched
+# choice here -- on the unit sphere the only thing two latents can differ by is angle,
+# so an l2 penalty additionally charges for a radius gap the projection already removed.
+
+features: /mnt/rdata7/proprogress/data/kinetics-dataset/precomputed_features/k400_train_10pct.pt
+checkpoint_dir: checkpoints/pwm_cls_residual_mlp_hypersphere_window0_vicreg
+val_fraction: 0.0
+seed: 0
+
+feature_dim: 384
+latent_dim: 384
+norm_type: hypersphere
+encoder_type: residual_mlp
+encoder_depth: 2
+encoder_expansion: 4
+encoder_dropout: 0.0
+token_mode: cls
+n_frames: 16
+max_len: 16
+
+nhead: 8
+pred_num_layers: 2
+dropout: 0.1
+
+window_size: 0
+
+pred_loss: l2
+pred_weight: 1.0
+straighten_weight: 0.1
+vicreg_std_weight: 1.0
+vicreg_cov_weight: 0.04
+sigreg_weight: 0.0
+chord_weight: 0.0
+stop_grad: true
+
+encoder_lr: 1e-5
+predictor_lr: 5e-4
+weight_decay: 0.0
+grad_clip: 0.0
+
+epochs: 50
+save_every: 10
+batch_size: 32
+amp: true
+num_workers: 4

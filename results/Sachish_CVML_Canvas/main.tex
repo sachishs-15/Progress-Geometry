@@ -1,0 +1,57 @@
+\documentclass[11pt]{article}
+
+% ---- Packages ----
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage[backend=biber,style=numeric,sorting=none]{biblatex}
+\addbibresource{references.bib}
+\usepackage{multirow}
+\usepackage{float} % [H] placement on every \begin{table} below -- forces exact-position
+                    % placement instead of the default float queue, which was pushing
+                    % tables pages later than where they're written in the source.
+
+% ---- Baseline-comparison color shorthands (used in experiments/*.tex tables) ----
+% \good{...}: this cell beats BOTH the DINOv2 CLS and DINOv2 mean-patch baselines on a
+% metric where the direction (higher/lower-is-better) is well defined, by a margin that
+% looks like a real effect rather than run-to-run noise.
+% \bad{...}: same, but worse than both baselines.
+% Deliberately left uncolored when a cell beats one baseline but not the other (mixed,
+% not a clean win/loss), when the metric has no well-defined better/worse direction
+% (e.g. mean_norm, adjacent_l2_distance, norm_std_within_clip), or when the deviation
+% from baseline is too small to be a real effect.
+\newcommand{\good}[1]{\textcolor{green!55!black}{#1}}
+\newcommand{\bad}[1]{\textcolor{red}{#1}}
+
+% ---- Metadata ----
+\title{Project Title}
+\author{Sachish}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+% Each \input below points to its own file under sections/ (or
+% experiments/ for the experiments log). To add or edit content,
+% only the relevant file needs to change -- this file stays fixed.
+
+\input{sections/problem_statement}
+\input{sections/background}
+\input{sections/methodology}
+\input{sections/experiments}
+\input{sections/results_summary}
+\input{sections/discussion}
+\input{sections/conclusion}
+
+\printbibliography
+
+\end{document}

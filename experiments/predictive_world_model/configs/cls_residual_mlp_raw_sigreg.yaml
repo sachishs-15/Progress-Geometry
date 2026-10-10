@@ -1,0 +1,52 @@
+# SIGReg variant of cls_residual_mlp_raw.yaml -- diff against it: only checkpoint_dir
+# and sigreg_weight (matching cls_residual_mlp_paper_window0_sigreg.yaml's own diff
+# against cls_residual_mlp_paper_window0.yaml exactly, sigreg_weight=0.1). straighten_weight
+# stays 0.1, unchanged from the base raw config. Completes the same three-way regularizer
+# comparison (stop-grad only / vicreg / sigreg) this project already runs for the frozen
+# DINOv2 CLS baseline, now for token_mode=raw.
+
+train_manifest: /home/sachish/proc-planning/data/kinetics-400/k400_train_10pct.csv
+checkpoint_dir: checkpoints/pwm_raw_residual_mlp_paper_window0_sigreg
+val_fraction: 0.0
+seed: 0
+
+feature_dim: 384
+latent_dim: 384
+norm_type: layernorm
+encoder_type: residual_mlp
+encoder_depth: 2
+encoder_expansion: 4
+encoder_dropout: 0.0
+token_mode: raw
+pixel_encoder_type: small_resnet
+raw_img_size: 224
+n_frames: 16
+max_len: 16
+
+nhead: 8
+pred_num_layers: 2
+dropout: 0.1
+
+window_size: 0
+
+pred_loss: l2
+pred_weight: 1.0
+straighten_weight: 0.1
+vicreg_std_weight: 0.0
+vicreg_cov_weight: 0.0
+sigreg_weight: 0.1
+sigreg_num_slices: 1024
+chord_weight: 0.0
+stop_grad: true
+
+encoder_lr: 1e-5
+predictor_lr: 5e-4
+weight_decay: 0.0
+grad_clip: 0.0
+
+epochs: 50
+save_every: 10
+batch_size: 32
+amp: true
+num_workers: 4
+progress_every: 200

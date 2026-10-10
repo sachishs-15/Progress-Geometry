@@ -1,0 +1,49 @@
+# LeWM-style SIGReg: Gaussianity is tested ACROSS clips at each fixed timestep (B=32
+# samples per test), then averaged over the 16 timesteps -- no pooling over time. Diff
+# against cls_residual_mlp_paper_window0_sigreg.yaml: checkpoint_dir and sigreg_axis only.
+# Note per-test N is 32 rather than 512, so the statistic's scale differs; retune
+# sigreg_weight if needed.
+
+features: /mnt/rdata7/proprogress/data/kinetics-dataset/precomputed_features/k400_train_10pct.pt
+checkpoint_dir: checkpoints/pwm_cls_residual_mlp_paper_window0_sigreg_pertime
+val_fraction: 0.0
+seed: 0
+
+feature_dim: 384
+latent_dim: 384
+norm_type: layernorm
+encoder_type: residual_mlp
+encoder_depth: 2
+encoder_expansion: 4
+encoder_dropout: 0.0
+token_mode: cls
+n_frames: 16
+max_len: 16
+
+nhead: 8
+pred_num_layers: 2
+dropout: 0.1
+
+window_size: 0
+
+pred_loss: l2
+pred_weight: 1.0
+straighten_weight: 0.1
+vicreg_std_weight: 0.0
+vicreg_cov_weight: 0.0
+sigreg_weight: 0.1
+sigreg_num_slices: 1024
+sigreg_axis: per_time
+chord_weight: 0.0
+stop_grad: true
+
+encoder_lr: 1e-5
+predictor_lr: 5e-4
+weight_decay: 0.0
+grad_clip: 0.0
+
+epochs: 50
+save_every: 10
+batch_size: 32
+amp: true
+num_workers: 4

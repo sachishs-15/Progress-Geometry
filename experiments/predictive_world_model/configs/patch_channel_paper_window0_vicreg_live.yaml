@@ -1,0 +1,65 @@
+# Companion to patch_channel_paper_window3_vicreg.yaml -- IDENTICAL except window_size (0
+# instead of 3, this project's own full-clip-causal default rather than the reference's
+# num_hist=3/num_pred=1) and batch_size. See that file's header for the full VICReg
+# rationale (std_weight=1.0/cov_weight=0.04, vicreg_granularity=token).
+#
+# batch_size: 32 -- kept at the paper-mirror baseline's value by explicit request, NOT
+# the batch_size=16 that checkpoints/pwm_patch_channel_k400_10pct_vicreg_sw*_window0_
+# batch16/config.yaml actually used for this window_size=0+VICReg combination. If this
+# OOMs, that prior run's batch_size=16 is the known-working fallback.
+
+checkpoint_dir: checkpoints/pwm_patch_channel_paper_window0_vicreg
+val_fraction: 0.0
+seed: 0
+
+feature_dim: 384
+latent_dim: 384        # unused by projector_type=channel -- actual dim is channel_out_dim
+channel_out_dim: 8
+channel_hidden: 192
+num_patches: 196
+token_mode: patch
+projector_type: channel
+patch_hub_id: dinov2_vits14
+patch_img_size: 196    # reference derivation (visual_world_model.py __init__): decoder_scale=16,
+                       # num_side_patches = image_size(224)//16 = 14, encoder_image_size =
+                       # 14 * patch_size(14) = 196 -- i.e. it resizes to 196px specifically
+                       # to force a 14x14 grid, independent of the env's raw 224px images
+n_frames: 16
+
+depth: 6
+heads: 16
+dim_head: 64
+mlp_dim: 2048
+dropout: 0.1
+emb_dropout: 0.0
+
+agg_mlp_hidden_dim: 512
+agg_out_dim: 128
+
+window_size: 0
+
+pred_loss: l2
+pred_weight: 1.0
+straighten_weight: 0.1
+vicreg_std_weight: 1.0
+vicreg_cov_weight: 0.04
+vicreg_granularity: token
+sigreg_weight: 0.0
+chord_weight: 0.0
+stop_grad: true
+
+encoder_lr: 1e-5
+predictor_lr: 5e-4
+weight_decay: 0.0
+grad_clip: 0.0
+
+epochs: 50
+save_every: 10
+batch_size: 32
+amp: true
+# 0, not 4 -- see patch_channel_paper_window0.yaml's comment: num_workers>0's worker->main
+# tensor handoff via /dev/shm got this exact window_size=0 combination SIGBUS-killed
+# repeatedly (even alone on an otherwise-idle node), so data loading runs in the main
+# process instead here.
+num_workers: 0
+train_manifest: /home/sachish/proc-planning/data/kinetics-400/k400_train_10pct.csv

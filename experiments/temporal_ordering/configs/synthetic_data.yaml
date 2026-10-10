@@ -1,0 +1,12 @@
+# Params for scripts/prepare_synthetic.py. Feature dim matches CrossTask (3200) exactly
+# so swapping to the real dataset later needs no downstream code changes.
+out: data_cache/synthetic
+n_tasks: 6
+min_videos_per_task: 6
+max_videos_per_task: 10
+min_frames: 60
+max_frames: 150
+feature_dim: 3200
+n_basis: 8
+noise_std: 0.5
+seed: 42

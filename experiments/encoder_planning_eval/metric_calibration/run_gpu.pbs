@@ -1,0 +1,10 @@
+#!/bin/bash
+#PBS -N calib_gpu
+#PBS -l select=1:ncpus=8:mem=48gb:ngpus=1
+#PBS -l walltime=03:00:00
+#PBS -o /home/sachish/proc-planning/experiments/encoder_planning_eval/metric_calibration/pbslogs/
+#PBS -e /home/sachish/proc-planning/experiments/encoder_planning_eval/metric_calibration/pbslogs/
+
+for i in $(seq 1 300); do ls /mnt/rdata7 >/dev/null 2>&1 && break; sleep 2; done
+cd /home/sachish/proc-planning/experiments/encoder_planning_eval/metric_calibration
+/home/sachish/.conda/envs/${ENV:-lift}/bin/python $SCRIPT $ARGS

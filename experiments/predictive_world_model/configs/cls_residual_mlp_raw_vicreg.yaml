@@ -1,0 +1,55 @@
+# VICReg variant of cls_residual_mlp_raw.yaml -- diff against it: only checkpoint_dir
+# and the two vicreg_*_weight values (matching cls_residual_mlp_paper_window0_vicreg.yaml's
+# own diff against cls_residual_mlp_paper_window0.yaml exactly, vicreg_std_weight=1.0/
+# vicreg_cov_weight=0.04). straighten_weight stays 0.1, unchanged from the base raw config.
+#
+# Worth watching for the same failure this family already has precedent for:
+# checkpoints/pwm_cls_mlp_k400 (LayerNorm + VICReg) inflated ||z|| 20 -> 146 while
+# train_vicreg_std fell to ~0.009 -- watch train_z_norm in train_log.csv. Here the risk
+# compounds with an untrained-from-scratch CNN underneath, so treat epoch 0-1 z_norm as
+# an early signal, not just a final-epoch check.
+
+train_manifest: /home/sachish/proc-planning/data/kinetics-400/k400_train_10pct.csv
+checkpoint_dir: checkpoints/pwm_raw_residual_mlp_paper_window0_vicreg
+val_fraction: 0.0
+seed: 0
+
+feature_dim: 384
+latent_dim: 384
+norm_type: layernorm
+encoder_type: residual_mlp
+encoder_depth: 2
+encoder_expansion: 4
+encoder_dropout: 0.0
+token_mode: raw
+pixel_encoder_type: small_resnet
+raw_img_size: 224
+n_frames: 16
+max_len: 16
+
+nhead: 8
+pred_num_layers: 2
+dropout: 0.1
+
+window_size: 0
+
+pred_loss: l2
+pred_weight: 1.0
+straighten_weight: 0.1
+vicreg_std_weight: 1.0
+vicreg_cov_weight: 0.04
+sigreg_weight: 0.0
+chord_weight: 0.0
+stop_grad: true
+
+encoder_lr: 1e-5
+predictor_lr: 5e-4
+weight_decay: 0.0
+grad_clip: 0.0
+
+epochs: 50
+save_every: 10
+batch_size: 32
+amp: true
+num_workers: 4
+progress_every: 200

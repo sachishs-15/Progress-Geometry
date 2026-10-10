@@ -1,0 +1,66 @@
+# Companion to patch_channel_paper_window3_sigreg.yaml -- IDENTICAL except window_size (0
+# instead of 3) and batch_size. See that file's header for the full SIGReg rationale
+# (sigreg_weight=0.1, no reference counterpart).
+#
+# batch_size: 32 -- kept at the paper-mirror baseline's value by explicit request, NOT
+# the batch_size=16 that checkpoints/pwm_patch_channel_k400_10pct_sigreg0.1_window0_
+# batch16/config.yaml actually used for this exact combination. If this OOMs, that prior
+# run's batch_size=16 is the known-working fallback.
+#
+# SSv2 variant: identical to patch_channel_paper_window0_{vicreg,sigreg}.yaml except
+# `features` (SSv2 train instead of K400 10pct) and checkpoint_dir. See
+# patch_channel_paper_window0_ssv2.yaml's header for the merge-shards backstory and why
+# no --train-manifest is needed.
+
+features: /mnt/rdata7/proprogress/data/SSv2/precomputed_features/dinov2_noreg/ssv2_train.pt
+checkpoint_dir: checkpoints/pwm_patch_channel_paper_window0_sigreg_ssv2
+val_fraction: 0.0
+seed: 0
+
+feature_dim: 384
+latent_dim: 384        # unused by projector_type=channel -- actual dim is channel_out_dim
+channel_out_dim: 8
+channel_hidden: 192
+num_patches: 196
+token_mode: patch
+projector_type: channel
+patch_hub_id: dinov2_vits14
+patch_img_size: 196    # reference derivation (visual_world_model.py __init__): decoder_scale=16,
+                       # num_side_patches = image_size(224)//16 = 14, encoder_image_size =
+                       # 14 * patch_size(14) = 196 -- i.e. it resizes to 196px specifically
+                       # to force a 14x14 grid, independent of the env's raw 224px images
+n_frames: 16
+
+depth: 6
+heads: 16
+dim_head: 64
+mlp_dim: 2048
+dropout: 0.1
+emb_dropout: 0.0
+
+agg_mlp_hidden_dim: 512
+agg_out_dim: 128
+
+window_size: 0
+
+pred_loss: l2
+pred_weight: 1.0
+straighten_weight: 0.1
+vicreg_std_weight: 0.0
+vicreg_cov_weight: 0.0
+vicreg_granularity: token
+sigreg_weight: 0.1
+sigreg_num_slices: 1024
+chord_weight: 0.0
+stop_grad: true
+
+encoder_lr: 1e-5
+predictor_lr: 5e-4
+weight_decay: 0.0
+grad_clip: 0.0
+
+epochs: 50
+save_every: 10
+batch_size: 32
+amp: true
+num_workers: 4

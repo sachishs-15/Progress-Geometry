@@ -1,0 +1,43 @@
+# Identical to cls_mlp_k400.yaml except norm_type -- see models/norms.py for what
+# ClipRMSNorm does differently from plain per-frame LayerNorm (one shared RMS scalar per
+# CLIP rather than an independent statistic per frame, no mean-centering).
+#
+# At matched short-training scale (200 epochs / 10k clips, see checkpoints/
+# ablation_clip_rmsnorm), this matched or beat both raw DINOv2 and plain LayerNorm on
+# SSv2/K400 ordinality metrics while keeping z_norm nearly flat (19.6->21.4, vs
+# LayerNorm's 19.6->24 at the same scale and ->146 at the full 500-epoch/241k-clip
+# scale). This config is the not-yet-run full-scale validation of whether that holds.
+#
+# Usage:
+#   ./train.sh configs/cls_mlp_k400_cliprmsnorm.yaml
+#   qsub train.pbs   (edit CONFIG= in train.pbs first)
+
+features: /mnt/rdata7/proprogress/data/kinetics-dataset/precomputed_features/dinov2/k400_train_full.pt
+checkpoint_dir: checkpoints/pwm_cls_mlp_k400_cliprmsnorm
+val_fraction: 0
+seed: 0
+
+feature_dim: 384
+latent_dim: 384
+hidden_dim: 384
+use_projector: true
+norm_type: clip_rmsnorm
+nhead: 8
+pred_num_layers: 2
+dropout: 0.1
+max_len: 16
+n_frames: 16
+
+pred_loss: l1
+pred_weight: 1.0
+straighten_weight: 0.1
+vicreg_std_weight: 1.0
+vicreg_cov_weight: 0.04
+stop_grad: true
+
+epochs: 500
+batch_size: 128
+lr: 0.0001
+weight_decay: 0.00001
+grad_clip: 1.0
+num_workers: 4

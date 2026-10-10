@@ -1,0 +1,27 @@
+{
+  "defaults": {
+    "manifest": "/home/sachish/proc-planning/data/chirality_in_action/SSv2/ssv2_validation.csv"
+  },
+  "experiments": [
+    {
+      "name": "dinov2_vits14",
+      "features": "/mnt/rdata7/proprogress/data/SSv2/precomputed_features/dinov2/ssv2_validation.pt"
+    },
+    {
+      "name": "dinov2_large",
+      "features": "/mnt/rdata7/proprogress/data/SSv2/precomputed_features/dinov2_large/ssv2_validation.pt"
+    },
+    {
+      "name": "dinov3",
+      "features": "/mnt/rdata7/proprogress/data/SSv2/precomputed_features/dinov3/ssv2_validation.pt"
+    },
+    {
+      "name": "vjepa2",
+      "features": "/mnt/rdata7/proprogress/data/SSv2/precomputed_features/vjepa2/ssv2_validation.pt"
+    },
+    {
+      "name": "vjepa2.1",
+      "features": "/mnt/rdata7/proprogress/data/SSv2/precomputed_features/vjepa2.1/ssv2_validation.pt"
+    }
+  ]
+}

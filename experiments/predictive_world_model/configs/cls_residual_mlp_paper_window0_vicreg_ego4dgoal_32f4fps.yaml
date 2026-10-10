@@ -1,0 +1,62 @@
+# cls-token counterpart to patch_channel_paper_window0_vicreg_ego4dgoal_32f4fps.yaml --
+# matches that patch config's ego4dgoal/32-frames/4fps setup, but through the dense-cache
+# cls extraction path (FeatureProvider.get_dense/_compute_dense_cls, token_mode='cls'),
+# which previously didn't exist -- get_dense was patch-only until this file was added.
+# See cls_residual_mlp_paper_window0_vicreg_ssv2.yaml for the full cls-vs-patch
+# architecture rationale (ResidualMlpEncoder, CausalPredictor, no agg head, etc).
+#
+# n_frames/max_len: 32, not 16 -- must match (train.py's own check: cls mode's
+# CausalPredictor sizes its positional table to max_len and expects every clip to be
+# exactly that long).
+#
+# live_cache_dir: SHARED with the patch configs' dense cache dir. Safe to share -- the
+# dense cache key now includes token_mode (and model_id for cls), so cls and patch
+# extractions for the same clip/fps hash to different files and never collide (see
+# feature_provider.py's _dense_metadata docstring).
+
+train_manifest: /home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv
+path_col: video_path
+live_cache_dir: /mnt/rdata7/proprogress/data/ego4dgoal/live_cache/pwm_dense_4fps
+checkpoint_dir: checkpoints/pwm_cls_residual_mlp_paper_window0_vicreg_ego4dgoal_32f4fps
+val_fraction: 0.0
+seed: 0
+
+feature_dim: 384
+latent_dim: 384
+norm_type: layernorm
+encoder_type: residual_mlp
+encoder_depth: 2
+encoder_expansion: 4
+encoder_dropout: 0.0
+token_mode: cls
+n_frames: 32
+max_len: 32
+sample_fps: 4            # 32 frames at 4 fps = a random 8s of each leaf clip per epoch, from a dense per-clip live cache
+short_clip_policy: drop   # clips under (n_frames-1)/sample_fps = 7.75s are dropped (38% of train clips)
+windows_per_clip: 1
+
+nhead: 8
+pred_num_layers: 2
+dropout: 0.1
+
+window_size: 0
+
+pred_loss: l2
+pred_weight: 1.0
+straighten_weight: 0.1
+vicreg_std_weight: 1.0
+vicreg_cov_weight: 0.04
+sigreg_weight: 0.0
+chord_weight: 0.0
+stop_grad: true
+
+encoder_lr: 1e-5
+predictor_lr: 5e-4
+weight_decay: 0.0
+grad_clip: 0.0
+
+epochs: 50
+save_every: 10
+batch_size: 32
+amp: true
+num_workers: 7  # live-cache decode is the bottleneck (same reasoning as the patch 32f4fps configs)

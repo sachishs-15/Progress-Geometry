@@ -1,0 +1,30 @@
+#!/bin/bash
+#PBS -N ordinal_sweep
+#PBS -l select=1:ncpus=16:mem=24gb:ngpus=2
+#PBS -l walltime=12:00:00
+#PBS -o /home/sachish/proc-planning/experiments/ordinal_objectives/pbslogs/
+#PBS -e /home/sachish/proc-planning/experiments/ordinal_objectives/pbslogs/
+
+# No --gpus: PBS sets CUDA_VISIBLE_DEVICES to this job's allocation and run_sweep.py
+# inherits it, handing one of those devices to each run. --cpus-per-run carves its core
+# blocks out of the job's own cpuset (see run_sweep.py), so nothing here assumes which
+# cores or cards the scheduler picked.
+#
+# SPEC, WORKERS and CPUS_PER_RUN are read from the environment so one script serves any
+# sweep; resource directives are overridden on the command line when a sweep needs more
+# than the 2-GPU default (`qsub -l` beats a #PBS directive).
+#   qsub sweep.pbs
+#   qsub -v SPEC=sweeps/hyperparams.example.json sweep.pbs
+#   qsub -l select=1:ncpus=32:mem=32gb:ngpus=4 -l walltime=24:00:00 \
+#        -v SPEC=sweeps/ego4dgoal.json,WORKERS=4 sweep.pbs
+
+# /mnt/rdata7 is NFS (10.128.10.17) and may not be up yet on a freshly allocated node,
+# which would kill the job instantly on the features file. Listing the parent is what
+# triggers the automount; checking the directory rather than one dataset's .pt keeps this
+# guard correct for any --spec. Same reason as ../predictive_world_model/train.pbs.
+for _ in $(seq 150); do [ -r /mnt/rdata7/proprogress/data ] && break; sleep 2; done
+
+cd /home/sachish/proc-planning/experiments/ordinal_objectives
+/home/sachish/.conda/envs/lift/bin/python run_sweep.py \
+    --spec "${SPEC:-sweeps/full_comparison.json}" \
+    --workers "${WORKERS:-2}" --cpus-per-run "${CPUS_PER_RUN:-8}"

@@ -1,0 +1,28 @@
+#!/bin/bash
+#PBS -N pouring_eval_w0_sweep
+#PBS -l select=1:ncpus=8:mem=64gb:ngpus=1
+#PBS -l walltime=04:00:00
+#PBS -o /home/sachish/proc-planning/experiments/pouring_ope/pbslogs/
+#PBS -e /home/sachish/proc-planning/experiments/pouring_ope/pbslogs/
+
+PY=/home/sachish/.conda/envs/frozen-encoders/bin/python
+P=/home/sachish/proc-planning/experiments/predictive_world_model/checkpoints
+cd /home/sachish/proc-planning/experiments/pouring_ope
+A="--encoder hubdinov2_vits14 --image-size 196 --stride 1"
+
+declare -A CK=(
+  [sw0.1_seed0]=$P/pwm_pouring_patch_channel_paper_window0_vicreg_bs4/last.ckpt
+  [sw0.1_seed1]=$P/pwm_pouring_w0_sw0.1_seed1/last.ckpt
+  [sw0.1_seed2]=$P/pwm_pouring_w0_sw0.1_seed2/last.ckpt
+  [sw0_seed0]=$P/pwm_pouring_w0_sw0_seed0/last.ckpt
+  [sw0_seed1]=$P/pwm_pouring_w0_sw0_seed1/last.ckpt
+  [sw0_seed2]=$P/pwm_pouring_w0_sw0_seed2/last.ckpt
+)
+for k in "${!CK[@]}"; do
+  for pool in mean flatten agg; do
+    $PY run_ope.py $A --checkpoint ${CK[$k]} --ckpt-pool $pool --out-dir results_w0_sweep_allframes --name w0_${k}__$pool
+    $PY run_ope.py $A --checkpoint ${CK[$k]} --ckpt-pool $pool --n-frames 32 --out-dir results_w0_sweep_fixed32 --name w0_${k}__$pool
+  done
+done
+$PY -u straightness.py --raw-pools --out-dir results_w0_sweep_straightness --checkpoints \
+  $(for k in "${!CK[@]}"; do echo -n "w0_$k=${CK[$k]} "; done)

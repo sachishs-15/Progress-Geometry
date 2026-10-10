@@ -1,0 +1,237 @@
+\subsection{Encoder Comparison: SSv2 vs.\ Ego4D GoalStep}
+\label{exp:encoder-comparison-ssv2-ego4d}
+
+\paragraph{What we tried} Scored eight frozen pretrained encoder/pooling variants
+(DINOv2 CLS and mean-pooled patch, DINOv3, V-JEPA2 and V-JEPA2.1 mean-pooled, CLIP,
+SigLIP, LevlJEPA) on SSv2 validation with the full \texttt{encoder\_planning\_eval}
+metric suite, and separately scored DINOv2 (CLS) on Ego4D GoalStep validation, to check
+whether the same encoder's latent geometry holds up on a different, longer-form
+procedural video dataset. Metrics follow the Main/Additional segregation and $x$
+(raw)/$z$ (L2-normalized) convention defined in Section~\ref{sec:methodology}.
+CLIP/SigLIP have no train split prepared yet, so their semantic-probe and
+cross-clip-consistency rows are not available. \textbf{DINOv2\textsubscript{CLS} and
+DINOv2\textsubscript{mean} are not two poolings of the same checkpoint}: CLS uses
+\texttt{facebook/dinov2-with-registers-small} (register tokens enabled), while mean uses
+\texttt{facebook/dinov2-small}, the no-register-token checkpoint (see
+\texttt{experiments/frozen\_encoders/models/dinov2/model.py}) --- so any difference
+between those two columns reflects both the pooling change and the registers/no-registers
+checkpoint difference confounded together, not pooling alone.
+
+\paragraph{Result}
+
+\begin{table}[H]
+\centering
+\caption{SSv2 validation, Main metrics --- eight frozen encoder/pooling variants.}
+\label{tab:encoder-comparison-ssv2-main}
+\footnotesize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcccccccc}
+\toprule
+Metric & DINOv2\textsubscript{CLS}\textsuperscript{c} & DINOv3\textsubscript{CLS} & V-JEPA2.1\textsubscript{mean} & CLIP\textsubscript{CLS} & SigLIP\textsubscript{pooler} & LevlJEPA\textsubscript{mean} & V-JEPA2\textsubscript{mean} & DINOv2\textsubscript{mean}\textsuperscript{c} \\
+\midrule
+\multicolumn{9}{l}{\textit{Whole-dataset collapse and spread}} \\
+effective\_rank\_fraction & 0.8120 & 0.8123 & \bad{0.5880} & 0.7102 & 0.6644 & 0.8020 & \bad{0.4202} & 0.7345 \\
+$W$ (within-clip mean pairwise L2) & 15.3090 & 4.7502 & 3.7010 & 3.5154 & 6.3529 & 9.8298 & 21.6972 & 14.7150 \\
+$B$ (across-clip mean pairwise L2) & 31.1109 & 10.7195 & 10.1219 & 6.8775 & 12.9999 & 17.4415 & 45.1458 & 34.0340 \\
+$B-W$ (gap) & 15.8019 & 5.9693 & 6.4209 & 3.3621 & 6.6470 & 7.6117 & 23.4486 & 19.3190 \\
+\midrule
+\multicolumn{9}{l}{\textit{Trajectory geometry}} \\
+trajectory\_straightness ($z$) & 0.1348 & 0.1325 & \good{0.1720} & 0.1215 & 0.1185 & 0.1259 & \good{0.1777} & 0.1426 \\
+mean\_velocity\_cosine ($z$) & -0.2636 & -0.2605 & \good{-0.1641} & -0.2928 & -0.3113 & -0.2829 & \good{-0.1323} & -0.2381 \\
+start\_end\_displacement ($z$) & 0.8001 & 0.6830 & 0.1918 & 0.5838 & 0.5111 & 0.6451 & 0.5028 & 0.6410 \\
+direction\_reversal\_fraction ($x$) & 0.8941 & 0.9008 & \good{0.7580} & 0.9058 & 0.9332 & 0.9049 & \good{0.6351} & 0.8829 \\
+\midrule
+\multicolumn{9}{l}{\textit{Temporal order}} \\
+time\_progress\_spearman ($z$) & 0.9040 & 0.9113 & \bad{0.8926} & \bad{0.8729} & \bad{0.8823} & \bad{0.8912} & \bad{0.8827} & 0.9114 \\
+distance\_to\_goal\_spearman ($x$) & 0.6110 & \bad{0.6093} & \good{0.6289} & \bad{0.5688} & \bad{0.5676} & \bad{0.6032} & 0.6171 & 0.6187 \\
+adjacent\_temporal\_nn\_fraction ($z$) & 0.7873 & 0.8044 & 0.8562 & 0.7424 & 0.7253 & 0.7583 & 0.7631 & 0.8292 \\
+\midrule
+\multicolumn{9}{l}{\textit{Cross-clip temporal consistency}} \\
+tcc\_kendall\_tau (mean) & 0.0661 & 0.0883 & 0.1497 & N/A\textsuperscript{a} & N/A\textsuperscript{a} & 0.0573 & 0.1310 & 0.1297 \\
+\midrule
+\multicolumn{9}{l}{\textit{Semantic information}} \\
+chirality.mean\_accuracy ($x$) & 0.7993 & 0.7929 & 0.7867 & N/A\textsuperscript{a} & N/A\textsuperscript{a} & \bad{0.7147} & 0.7834 & 0.7763 \\
+content.knn.balanced\_acc & 0.2050 & 0.1692 & 0.1662 & N/A\textsuperscript{a} & N/A\textsuperscript{a} & 0.1478 & 0.1972 & 0.1621 \\
+content.linear.balanced\_acc & 0.2521 & 0.2527 & 0.2875 & N/A\textsuperscript{a} & N/A\textsuperscript{a} & 0.2406 & 0.2986 & 0.2379 \\
+change.knn.balanced\_acc & 0.3110 & 0.3262 & 0.3298 & N/A\textsuperscript{a} & N/A\textsuperscript{a} & 0.2376 & 0.3122 & 0.3416 \\
+change.linear.balanced\_acc & 0.3681 & 0.3708 & 0.4670 & N/A\textsuperscript{a} & N/A\textsuperscript{a} & 0.2866 & 0.4070 & 0.4115 \\
+content+change.knn.balanced\_acc & 0.3434 & 0.3522 & 0.3506 & N/A\textsuperscript{a} & N/A\textsuperscript{a} & 0.2521 & 0.3836 & 0.3713 \\
+content+change.linear.balanced\_acc & 0.5242 & 0.4612 & 0.5413 & N/A\textsuperscript{a} & N/A\textsuperscript{a} & 0.3678 & 0.5242 & 0.4886 \\
+\bottomrule
+\end{tabular}%
+}
+
+\vspace{0.3em}
+{\footnotesize \textsuperscript{a}no train split prepared for CLIP/SigLIP yet. \quad
+\textsuperscript{c}DINOv2\textsubscript{CLS} = \texttt{facebook/dinov2-with-registers-small};
+DINOv2\textsubscript{mean} = \texttt{facebook/dinov2-small} (no registers) --- different
+checkpoints, not just different pooling of the same one.}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{SSv2 validation, Additional metrics --- same eight variants as
+Table~\ref{tab:encoder-comparison-ssv2-main}.}
+\label{tab:encoder-comparison-ssv2-additional}
+\footnotesize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcccccccc}
+\toprule
+Metric & DINOv2\textsubscript{CLS}\textsuperscript{c} & DINOv3\textsubscript{CLS} & V-JEPA2.1\textsubscript{mean} & CLIP\textsubscript{CLS} & SigLIP\textsubscript{pooler} & LevlJEPA\textsubscript{mean} & V-JEPA2\textsubscript{mean} & DINOv2\textsubscript{mean}\textsuperscript{c} \\
+\midrule
+\multicolumn{9}{l}{\textit{Trajectory geometry and raw variants}} \\
+mean\_chord\_alignment ($z$) & 0.1146 & 0.1150 & 0.1403 & 0.1099 & 0.1067 & 0.1097 & 0.1437 & 0.1210 \\
+trajectory\_straightness\_raw ($x$) & 0.1358 & 0.1331 & 0.1737 & 0.1214 & 0.1185 & 0.1260 & 0.1784 & 0.1459 \\
+mean\_velocity\_cosine\_raw ($x$) & -0.2627 & -0.2601 & -0.1623 & -0.2929 & -0.3114 & -0.2829 & -0.1320 & -0.2360 \\
+mean\_chord\_alignment\_raw ($x$) & 0.1154 & 0.1156 & 0.1409 & 0.1097 & 0.1066 & 0.1098 & 0.1439 & 0.1229 \\
+\midrule
+\multicolumn{9}{l}{\textit{Raw embedding magnitude}} \\
+norm\_growth ($x$) & 0.9933 & 0.9988 & 1.0052 & 1.0069 & 1.0041 & 0.9993 & 1.0109 & 1.0154 \\
+norm\_std\_within\_clip ($x$) & 0.5421 & 0.1171 & 0.3548 & 0.1850 & 0.3806 & 0.0727 & 1.0574 & 1.2880 \\
+adjacent\_l2\_distance ($x$) & 9.5983 & 3.0036 & 1.9517 & 2.3822 & 4.3616 & 6.4789 & 11.3937 & 8.7840 \\
+mean\_norm ($x$) & 23.653 & 8.544 & 24.895 & 7.255 & 14.869 & 18.472 & 56.294 & 28.163 \\
+\midrule
+\multicolumn{9}{l}{\textit{Change-direction consistency}} \\
+change\_direction.gap & 0.0386 & 0.0387 & 0.0676 & N/A\textsuperscript{a} & N/A\textsuperscript{a} & 0.0227 & 0.0555 & 0.0627 \\
+\bottomrule
+\end{tabular}%
+}
+
+\vspace{0.3em}
+{\footnotesize \textsuperscript{a}no train split prepared for CLIP/SigLIP yet. \quad
+\textsuperscript{c}DINOv2\textsubscript{CLS} = \texttt{facebook/dinov2-with-registers-small};
+DINOv2\textsubscript{mean} = \texttt{facebook/dinov2-small} (no registers) --- different
+checkpoints, not just different pooling of the same one.}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Ego4D GoalStep validation, Main metrics --- DINOv2 (CLS) only.}
+\label{tab:encoder-comparison-ego4d-main}
+\begin{tabular}{lc}
+\toprule
+Metric & DINOv2\textsubscript{CLS} \\
+\midrule
+\multicolumn{2}{l}{\textit{Whole-dataset collapse and spread}} \\
+effective\_rank\_fraction & 0.7655 \\
+$W$ (within-clip mean pairwise L2) & 16.1636 \\
+$B$ (across-clip mean pairwise L2) & 27.2707 \\
+$B-W$ (gap) & 11.1070 \\
+\midrule
+\multicolumn{2}{l}{\textit{Trajectory geometry}} \\
+trajectory\_straightness ($z$) & 0.1032 \\
+mean\_velocity\_cosine ($z$) & -0.3525 \\
+start\_end\_displacement ($z$) & 0.8233 \\
+direction\_reversal\_fraction ($x$) & 0.9646 \\
+\midrule
+\multicolumn{2}{l}{\textit{Temporal order}} \\
+time\_progress\_spearman ($z$) & 0.6019 \\
+distance\_to\_goal\_spearman ($x$) & 0.2290 \\
+adjacent\_temporal\_nn\_fraction ($z$) & 0.5615 \\
+\midrule
+\multicolumn{2}{l}{\textit{Cross-clip temporal consistency}} \\
+tcc\_kendall\_tau (mean) & 0.0033 \\
+\midrule
+\multicolumn{2}{l}{\textit{Semantic information}} \\
+chirality.mean\_accuracy ($x$) & N/A\textsuperscript{b} \\
+content.knn.balanced\_acc & 0.3520 \\
+content.linear.balanced\_acc & 0.4108 \\
+change.knn.balanced\_acc & 0.2355 \\
+change.linear.balanced\_acc & 0.1127 \\
+content+change.knn.balanced\_acc & 0.3260 \\
+content+change.linear.balanced\_acc & 0.3921 \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.3em}
+{\footnotesize \textsuperscript{b}chirality probe is SSv2-only by protocol.}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Ego4D GoalStep validation, Additional metrics --- same run as
+Table~\ref{tab:encoder-comparison-ego4d-main}.}
+\label{tab:encoder-comparison-ego4d-additional}
+\begin{tabular}{lc}
+\toprule
+Metric & DINOv2\textsubscript{CLS} \\
+\midrule
+\multicolumn{2}{l}{\textit{Trajectory geometry and raw variants}} \\
+mean\_chord\_alignment ($z$) & 0.0830 \\
+trajectory\_straightness\_raw ($x$) & 0.1032 \\
+mean\_velocity\_cosine\_raw ($x$) & -0.3521 \\
+mean\_chord\_alignment\_raw ($x$) & 0.0830 \\
+\midrule
+\multicolumn{2}{l}{\textit{Raw embedding magnitude}} \\
+norm\_growth ($x$) & 0.9995 \\
+norm\_std\_within\_clip ($x$) & 0.5529 \\
+adjacent\_l2\_distance ($x$) & 12.8394 \\
+mean\_norm ($x$) & 23.316 \\
+\midrule
+\multicolumn{2}{l}{\textit{Change-direction consistency}} \\
+change\_direction.gap & 0.0012 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Inference}
+
+\textbf{This is the reference point the rest of this log measures against, not a
+follow-up to anything.} DINOv2\textsubscript{CLS} and DINOv2\textsubscript{mean} are
+used as the baseline pair throughout: both are frozen, untrained, off-the-shelf, and
+score well on the metrics this project cares about most
+(\texttt{effective\_rank\_fraction} 0.73--0.81, no collapse; \texttt{chirality.mean\_accuracy}
+0.78--0.80). Elsewhere in this log, \good{green} marks a cell that beats \emph{both}
+baselines on a metric with a well-defined better direction, by a margin that looks like
+a real effect rather than noise; \bad{red} marks the opposite. Mixed results (better
+than one baseline, worse than the other) and modest differences are left uncolored.
+
+\textbf{The collapse-vs-straightness tension this whole project tracks is already
+visible among frozen encoders, before any training happens.} V-JEPA2\textsubscript{mean}
+beats both DINOv2 baselines on \texttt{trajectory\_straightness},
+\texttt{direction\_reversal\_fraction}, and \texttt{mean\_velocity\_cosine} --- yet has
+by far the worst \texttt{effective\_rank\_fraction} in the table (0.4202). V-JEPA2.1
+shows the same pattern in miniature (straightness/reversal/velocity-cosine all beat
+baseline, \texttt{effective\_rank\_fraction}=0.588, also below both DINOv2 variants).
+Both are the same architecture family evaluated completely untrained by this project ---
+so a representation that looks locally straighter than DINOv2 while carrying less usable
+rank is not something training introduces later in this log; it is already latent in how
+these encoders' raw features are structured. \texttt{time\_progress\_spearman} agrees
+with the rank story rather than the straightness story for both (red, 0.883--0.893, vs.\
+DINOv2's 0.904--0.911), but \texttt{distance\_to\_goal\_spearman} splits the two: V-JEPA2.1
+beats both baselines (0.6289, green) while V-JEPA2 lands in between (0.6171, uncolored)
+--- the two "temporal order" metrics don't even agree with each other on V-JEPA2.1 here.
+It's also worth noting V-JEPA2.1 does \emph{not} come at zero semantic cost the way the
+collapsed trained checkpoints later in this log do: its \texttt{change.linear.balanced\_acc}
+(0.4670) and \texttt{content+change.linear.balanced\_acc} (0.5413) both exceed both
+DINOv2 baselines too, so whatever V-JEPA2.1's lower rank costs it, it isn't showing up as
+lost semantic content on these probes specifically.
+
+\textbf{DINOv3 is a near-exact tie with DINOv2\textsubscript{CLS} on collapse, not an
+improvement.} \texttt{effective\_rank\_fraction} 0.8123 vs.\ 0.8120 is within noise ---
+deliberately left uncolored despite the nominal edge, and every other collapse/straightness
+metric favors DINOv2\textsubscript{CLS} outright.
+
+\textbf{On \texttt{time\_progress\_spearman} specifically, DINOv2\textsubscript{CLS}/mean
+are the best in the table, and nothing else comes close.} Every other encoder is red
+(CLIP 0.8729, SigLIP 0.8823, LevlJEPA 0.8912, V-JEPA2 0.8827, V-JEPA2.1 0.8926) except
+DINOv3, an uncolored near-tie at 0.9113. \texttt{distance\_to\_goal\_spearman} is less
+one-sided: most encoders are red there too, but V-JEPA2.1 (0.6289) clearly beats both
+baselines and V-JEPA2 (0.6171) is close enough to land uncolored --- so whatever V-JEPA
+family encoders lose on classical ordinal ranking, they partly make back on
+distance-to-goal specifically.
+
+\textbf{LevlJEPA is the weakest encoder on semantic content despite reasonable rank.}
+\texttt{effective\_rank\_fraction}=0.802 (healthy, close to DINOv2\textsubscript{CLS}'s
+0.812), yet \texttt{chirality.mean\_accuracy} (0.7147, colored red) and
+\texttt{content.knn.balanced\_acc} (0.1478, the lowest of any encoder with a train split
+available) show healthy rank alone does not guarantee semantic content survives.
+
+\textbf{The same frozen DINOv2\textsubscript{CLS} encoder looks far less ordinal on
+Ego4D than on SSv2.} \texttt{time\_progress\_spearman} drops from 0.9040 (SSv2) to
+0.6019 (Ego4D), and \texttt{distance\_to\_goal\_spearman} from 0.6110 to 0.2290 ---
+\texttt{effective\_rank\_fraction} stays reasonably healthy on both (0.8120 vs.\ 0.7655),
+so this is not collapse, it is Ego4D's longer, less visually self-similar procedural
+clips giving the encoder's raw geometry less of a clean temporal-progress signal to
+begin with. Any later experiment that evaluates on Ego4D should not expect SSv2-level
+ordinality numbers even from a healthy encoder.

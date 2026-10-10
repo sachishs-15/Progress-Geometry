@@ -1,0 +1,12 @@
+# Params for scripts/prepare_ssv2.py. NOT runnable until SSv2 is manually downloaded
+# (registration required) — see that script's docstring for the expected raw layout.
+raw_dir: data_cache/_ssv2_raw
+videos_dir: null   # defaults to <raw_dir>/20bn-something-something-v2
+out: data_cache/ssv2
+encoder: dinov2     # one of: clip, dinov2, dinov3, siglip, vjepa2 (experiments/frozen_encoders)
+pooling: mean_patch
+stride: 2           # clips are short (2-6s); every-2nd-frame still gives several timesteps
+max_frames: 32
+max_videos_per_template: 20   # SSv2 has ~220k clips total; keep this small for a first run
+max_templates: null
+seed: 42

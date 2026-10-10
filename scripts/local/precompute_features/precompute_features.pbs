@@ -1,0 +1,27 @@
+#!/bin/bash
+#PBS -N precompute_features
+#PBS -l select=1:ncpus=32:mem=64gb:ngpus=4
+#PBS -l walltime=24:00:00
+#PBS -o /home/sachish/proc-planning/scripts/local/precompute_features/pbslogs/
+#PBS -e /home/sachish/proc-planning/scripts/local/precompute_features/pbslogs/
+
+# CSV/OUT_DIR/MODEL/N_FRAMES/POOLING/ENCODER_KWARGS/PATCH_TOKENS/NUM_GPUS can be
+# overridden without editing this file:
+#   qsub -v CSV=...,OUT_DIR=...,MODEL=dinov2_base precompute_features.pbs
+#   qsub -v CSV=...,OUT_DIR=...,MODEL=vjepa2,ENCODER_KWARGS="capture_attention=False" precompute_features.pbs
+#   qsub -v CSV=...,OUT_DIR=...,MODEL=dinov2_noreg,PATCH_TOKENS=1,NUM_GPUS=7 \
+#     -l select=1:ncpus=32:mem=64gb:ngpus=7:host=cvml07 precompute_features.pbs
+#     (explicit -l on the qsub command line overrides this file's own #PBS -l select=
+#     line above -- needed since NUM_GPUS here only controls the SCRIPT's sharding loop,
+#     not how many GPUs PBS actually grants the job; those must match)
+CSV="${CSV:-/home/sachish/proc-planning/data/chirality_in_action/EPIC/epic_validation_raw.csv}"
+OUT_DIR="${OUT_DIR:-/mnt/rdata7/proprogress/data/epic-kitchens/precomputed_features}"
+MODEL="${MODEL:-dinov2}"
+N_FRAMES="${N_FRAMES:-16}"
+POOLING="${POOLING:-cls}"
+ENCODER_KWARGS="${ENCODER_KWARGS:-}"
+PATCH_TOKENS="${PATCH_TOKENS:-}"
+export NUM_GPUS="${NUM_GPUS:-4}"
+
+cd /home/sachish/proc-planning/scripts/local/precompute_features
+bash precompute_features_parallel.sh "$CSV" "$OUT_DIR" "$MODEL" "$N_FRAMES" "$POOLING" "$ENCODER_KWARGS" "$PATCH_TOKENS"

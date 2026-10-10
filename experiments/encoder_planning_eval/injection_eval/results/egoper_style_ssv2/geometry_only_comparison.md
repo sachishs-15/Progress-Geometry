@@ -1,0 +1,90 @@
+# Geometry-only comparison
+
+Same held-out clips and injections as the parent run. `raw` is DINOv2 patch
+tokens averaged per frame; `vicreg3` is encoded latent patches averaged per frame.
+Both columns use the same geometry score. Predictor scores are excluded.
+Flag rates use each readout's 95th percentile of clean calibration clips.
+Appearance is a benign control, so its flag rate measures false alarms.
+
+| Injection | Score | DINOv2 AUROC | Model geometry AUROC | Difference |
+|---|---|---:|---:|---:|
+| reverse | jump_max | 0.500 | 0.500 | +0.000 |
+| reverse | jump_spike | 0.500 | 0.500 | +0.000 |
+| reverse | cv_max | 0.500 | 0.500 | +0.000 |
+| reverse | cv_mean | 0.500 | 0.500 | +0.000 |
+| reverse | chord_dev | 0.500 | 0.500 | +0.000 |
+| reverse | backslide | 0.500 | 0.500 | -0.000 |
+| reverse | step_cv | 0.500 | 0.500 | +0.000 |
+| reverse | stall | 0.500 | 0.500 | +0.000 |
+| swap | jump_max | 0.692 | 0.679 | -0.013 |
+| swap | jump_spike | 0.672 | 0.617 | -0.055 |
+| swap | cv_max | 0.662 | 0.679 | +0.017 |
+| swap | cv_mean | 0.677 | 0.690 | +0.013 |
+| swap | chord_dev | 0.267 | 0.286 | +0.020 |
+| swap | backslide | 0.963 | 0.800 | -0.163 |
+| swap | step_cv | 0.689 | 0.659 | -0.031 |
+| swap | stall | 0.574 | 0.581 | +0.007 |
+| shuffle | jump_max | 0.710 | 0.695 | -0.015 |
+| shuffle | jump_spike | 0.731 | 0.684 | -0.047 |
+| shuffle | cv_max | 0.666 | 0.683 | +0.017 |
+| shuffle | cv_mean | 0.641 | 0.662 | +0.021 |
+| shuffle | chord_dev | 0.373 | 0.365 | -0.007 |
+| shuffle | backslide | 0.957 | 0.852 | -0.106 |
+| shuffle | step_cv | 0.714 | 0.693 | -0.022 |
+| shuffle | stall | 0.550 | 0.553 | +0.003 |
+| drop | jump_max | 0.633 | 0.603 | -0.030 |
+| drop | jump_spike | 0.705 | 0.643 | -0.062 |
+| drop | cv_max | 0.588 | 0.593 | +0.005 |
+| drop | cv_mean | 0.539 | 0.555 | +0.015 |
+| drop | chord_dev | 0.585 | 0.534 | -0.051 |
+| drop | backslide | 0.529 | 0.535 | +0.006 |
+| drop | step_cv | 0.687 | 0.653 | -0.034 |
+| drop | stall | 0.572 | 0.548 | -0.023 |
+| splice_other | jump_max | 0.986 | 0.968 | -0.019 |
+| splice_other | jump_spike | 0.965 | 0.946 | -0.018 |
+| splice_other | cv_max | 0.929 | 0.932 | +0.003 |
+| splice_other | cv_mean | 0.864 | 0.901 | +0.037 |
+| splice_other | chord_dev | 0.929 | 0.861 | -0.068 |
+| splice_other | backslide | 0.696 | 0.761 | +0.065 |
+| splice_other | step_cv | 0.971 | 0.952 | -0.018 |
+| splice_other | stall | 0.589 | 0.609 | +0.019 |
+| splice_same | jump_max | 0.983 | 0.962 | -0.021 |
+| splice_same | jump_spike | 0.954 | 0.933 | -0.021 |
+| splice_same | cv_max | 0.923 | 0.926 | +0.003 |
+| splice_same | cv_mean | 0.859 | 0.895 | +0.036 |
+| splice_same | chord_dev | 0.914 | 0.840 | -0.074 |
+| splice_same | backslide | 0.706 | 0.748 | +0.042 |
+| splice_same | step_cv | 0.965 | 0.942 | -0.022 |
+| splice_same | stall | 0.610 | 0.605 | -0.004 |
+| freeze | jump_max | 0.558 | 0.549 | -0.009 |
+| freeze | jump_spike | 0.673 | 0.653 | -0.020 |
+| freeze | cv_max | 0.519 | 0.526 | +0.007 |
+| freeze | cv_mean | 0.378 | 0.413 | +0.035 |
+| freeze | chord_dev | 0.690 | 0.630 | -0.061 |
+| freeze | backslide | 0.442 | 0.461 | +0.019 |
+| freeze | step_cv | 0.937 | 0.889 | -0.048 |
+| freeze | stall | 0.997 | 0.997 | +0.000 |
+| speed_up | jump_max | 0.585 | 0.584 | -0.001 |
+| speed_up | jump_spike | 0.613 | 0.581 | -0.031 |
+| speed_up | cv_max | 0.579 | 0.583 | +0.003 |
+| speed_up | cv_mean | 0.542 | 0.558 | +0.017 |
+| speed_up | chord_dev | 0.588 | 0.532 | -0.055 |
+| speed_up | backslide | 0.536 | 0.547 | +0.012 |
+| speed_up | step_cv | 0.618 | 0.596 | -0.022 |
+| speed_up | stall | 0.563 | 0.552 | -0.011 |
+| slow_down | jump_max | 0.337 | 0.359 | +0.022 |
+| slow_down | jump_spike | 0.636 | 0.573 | -0.063 |
+| slow_down | cv_max | 0.338 | 0.356 | +0.018 |
+| slow_down | cv_mean | 0.136 | 0.204 | +0.068 |
+| slow_down | chord_dev | 0.694 | 0.608 | -0.086 |
+| slow_down | backslide | 0.382 | 0.376 | -0.006 |
+| slow_down | step_cv | 0.610 | 0.561 | -0.049 |
+| slow_down | stall | 0.362 | 0.415 | +0.053 |
+| appearance | jump_max | 0.500 | 0.508 | +0.008 |
+| appearance | jump_spike | 0.500 | 0.493 | -0.007 |
+| appearance | cv_max | 0.500 | 0.509 | +0.008 |
+| appearance | cv_mean | 0.500 | 0.513 | +0.013 |
+| appearance | chord_dev | 0.500 | 0.497 | -0.003 |
+| appearance | backslide | 0.500 | 0.503 | +0.003 |
+| appearance | step_cv | 0.500 | 0.494 | -0.006 |
+| appearance | stall | 0.500 | 0.499 | -0.001 |

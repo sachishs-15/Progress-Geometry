@@ -1,0 +1,105 @@
+\section{Results Summary \& Cross-Experiment Analysis}
+\label{sec:results-summary}
+
+% TODO: aggregate findings, trends, and comparisons across experiments
+% (as opposed to the per-experiment Analysis subsections in experiments.tex).
+[Add cross-experiment analysis here.]
+
+\subsection{VICReg vs.\ SigReg: Agg Head Bypassed}
+\label{sec:results-summary-vicreg-sigreg}
+
+\texttt{pwm\_cls\_residual\_mlp\_paper\_window0\_\{vicreg,sigreg\}}: no aggregation head
+(\texttt{cls\_agg\_head=false}, $z$ used as-is) vs.\ \texttt{..\_agghead}: a trivial
+\texttt{num\_patches=1} aggregation head added, read \emph{encoder-only}
+(\texttt{model.encoder(x)}, bypassing the head --- see
+Section~\ref{sec:methodology-architecture}). SSv2 validation, same metric suite as
+elsewhere in this log; \good{}/\bad{} against DINOv2\textsubscript{CLS}/DINOv2\textsubscript{mean}
+as in every other table.
+
+\begin{table}[H]
+\centering
+\caption{VICReg vs.\ SigReg, agg head bypassed (encoder-only reading) --- SSv2 validation.}
+\label{tab:results-summary-vicreg-sigreg}
+\footnotesize
+\begin{tabular}{llccccc}
+\toprule
+Property & Metric & VICReg & VICReg & DINOv2 & SigReg & SigReg \\
+ & & (no agg) & (agghead, enc.) & CLS\textsuperscript{ref} & (no agg) & (agghead, enc.) \\
+\midrule
+Not collapsed & effective\_rank\_fraction $\uparrow$ & \good{0.8229} & \good{0.8392} & 0.8120 & \good{0.8213} & \good{0.8214} \\
+\midrule
+\multirow{2}{*}{Progress-ordered} & time\_progress\_spearman $\uparrow$ & 0.9062 & 0.9087 & 0.9040 & 0.9062 & 0.9063 \\
+ & distance\_to\_goal\_spearman $\uparrow$ & \bad{0.5935} & \bad{0.5719} & 0.6110 & \bad{0.5832} & \bad{0.5841} \\
+\midrule
+\multirow{2}{*}{Straight and smooth} & trajectory\_straightness $\uparrow$ & \bad{0.1327} & \bad{0.1278} & 0.1348 & \bad{0.1303} & \bad{0.1303} \\
+ & direction\_reversal\_fraction $\downarrow$ & \bad{0.9045} & \bad{0.9161} & 0.8941 & \bad{0.9076} & \bad{0.9081} \\
+\midrule
+\multirow{2}{*}{Semantic} & chirality.mean\_accuracy $\uparrow$ & 0.7914 & 0.7877 & 0.7993 & 0.7778 & 0.7771 \\
+ & content+change.linear $\uparrow$ & 0.4938 & \bad{0.4872} & 0.5242 & 0.4949 & 0.4934 \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.3em}
+{\footnotesize \textsuperscript{ref} DINOv2\textsubscript{CLS}=0.8120/0.9040/0.6110/0.1348/0.8941/0.7993/0.5242;
+DINOv2\textsubscript{mean}=0.7345/0.9114/0.6187/0.1426/0.8829/0.7763/0.4886 (same row order) ---
+\good{}/\bad{} are against both baselines, not the CLS column shown.}
+\end{table}
+
+\paragraph{Inference} Once the agg head is bypassed, VICReg and SigReg are
+indistinguishable to within noise on every metric --- the regularizer choice has no
+detectable effect here, consistent with this log's broader finding that the agg head
+itself, not the choice of regularizer, is what drives collapse.
+\texttt{effective\_rank\_fraction} is the only metric that's green across the board;
+\texttt{distance\_to\_goal\_spearman}, \texttt{trajectory\_straightness}, and
+\texttt{direction\_reversal\_fraction} are red for all four, meaning rank-recovery via
+bypassing the agg head is not sufficient to beat frozen DINOv2 CLS on temporal/geometric
+quality --- recovering from collapse brings these checkpoints back to the no-agg-head
+baseline's level, not past it.
+
+\subsection{No Regularizer: Agg Head Bypassed}
+\label{sec:results-summary-noreg}
+
+Same comparison as Section~\ref{sec:results-summary-vicreg-sigreg}, for
+\texttt{pwm\_cls\_residual\_mlp\_paper\_window0} (no agg head, no regularizer) vs.\
+\texttt{..\_agghead} (agg head added, no regularizer) read encoder-only.
+
+\begin{table}[H]
+\centering
+\caption{No regularizer, agg head bypassed (encoder-only reading) --- SSv2 validation.}
+\label{tab:results-summary-noreg}
+\footnotesize
+\begin{tabular}{llccc}
+\toprule
+Property & Metric & No agg & DINOv2 CLS\textsuperscript{ref} & Agg head (enc.) \\
+\midrule
+Not collapsed & effective\_rank\_fraction $\uparrow$ & \bad{0.7308} & 0.8120 & 0.7698 \\
+\midrule
+\multirow{2}{*}{Progress-ordered} & time\_progress\_spearman $\uparrow$ & \bad{0.8428} & 0.9040 & \bad{0.8636} \\
+ & distance\_to\_goal\_spearman $\uparrow$ & \good{0.6292} & 0.6110 & \good{0.6445} \\
+\midrule
+\multirow{2}{*}{Straight and smooth} & trajectory\_straightness $\uparrow$ & \good{0.1563} & 0.1348 & \good{0.1502} \\
+ & direction\_reversal\_fraction $\downarrow$ & \good{0.8163} & 0.8941 & \good{0.8383} \\
+\midrule
+\multirow{2}{*}{Semantic} & chirality.mean\_accuracy $\uparrow$ & 0.7879 & 0.7993 & 0.7983 \\
+ & content+change.linear $\uparrow$ & \bad{0.4802} & 0.5242 & 0.5085 \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.3em}
+{\footnotesize \textsuperscript{ref} DINOv2\textsubscript{CLS}=0.8120/0.9040/0.6110/0.1348/0.8941/0.7993/0.5242;
+DINOv2\textsubscript{mean}=0.7345/0.9114/0.6187/0.1426/0.8829/0.7763/0.4886 (same row order) ---
+\good{}/\bad{} are against both baselines, not the CLS column shown.}
+\end{table}
+
+\paragraph{Inference} Unlike the VICReg/SigReg pair, the no-regularizer checkpoints are
+the only ones in the cls family to land green on \texttt{trajectory\_straightness} and
+\texttt{direction\_reversal\_fraction} --- both VICReg and SigReg actually make
+straightness \emph{worse} than doing nothing (Section~\ref{sec:results-summary-vicreg-sigreg}).
+\texttt{distance\_to\_goal\_spearman} is also green here, where it was red for every
+VICReg/SigReg column. The trade-off: \texttt{effective\_rank\_fraction} and
+\texttt{time\_progress\_spearman} are red for both noreg columns, and
+\texttt{content+change.linear} is red for \texttt{window0} specifically (the only cell
+in either table where the no-agg-head reading is red while its agg-head-bypassed
+counterpart is not). Consistent with the training-curve finding elsewhere in this log:
+these checkpoints stop improving almost immediately (best epoch 7--8 of 50), so this is
+an early, undertrained snapshot rather than a fully converged one.

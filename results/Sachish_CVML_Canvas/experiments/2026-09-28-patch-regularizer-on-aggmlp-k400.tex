@@ -1,0 +1,181 @@
+\subsection{Regularizer Comparison: No Regularizer vs.\ SigReg vs.\ VICReg (K400 10\%, Patch-Channel)}
+\label{exp:regularizer-comparison-k400}
+
+\paragraph{What we tried} Three patch-channel PWM checkpoints on the K400 10\% subset
+(\texttt{window\_size=0}, \texttt{batch\_size=16}, \texttt{straighten\_weight=0.1}
+throughout), varying only the anti-collapse regularizer:
+\texttt{pwm\_patch\_channel\_k400\_10pct\_noreg\_window0\_batch16\_1} (\texttt{noreg},
+no regularizer at all), \texttt{pwm\_patch\_channel\_k400\_10pct\_sigreg0.1\_window0\_batch16}
+(\texttt{sigreg0.1}, \texttt{sigreg\_weight=0.1}), and
+\texttt{pwm\_patch\_channel\_k400\_10pct\_vicreg\_window0\_batch16\_1} (\texttt{sw0.1
+(vicreg)}, \texttt{vicreg\_std\_weight=1.0}, \texttt{vicreg\_cov\_weight=0.04}). A further
+\texttt{straighten\_weight} sweep on top of the VICReg config
+(\texttt{sw0.5}--\texttt{sw2.0}) exists but isn't broken out here. Scored the three core
+checkpoints with the same full metric suite from Section~\ref{sec:methodology} (Main and
+Additional), and compared training-loss trajectories from epoch 0 to each run's selected
+best epoch.
+
+\paragraph{Result}
+
+\begin{table}[H]
+\centering
+\caption{Main metrics, K400 10\% patch-channel, three regularizer settings.}
+\label{tab:regularizer-comparison-main}
+\begin{tabular}{lccc}
+\toprule
+Metric & noreg & sigreg0.1 & sw0.1 (vicreg) \\
+\midrule
+\multicolumn{4}{l}{\textit{Whole-dataset collapse and spread}} \\
+effective\_rank\_fraction & \bad{0.0084} & 0.8115 & \good{0.9756} \\
+$W$ (within-clip mean pairwise L2) & 1.6978 & 21.7198 & 20.1615 \\
+$B$ (across-clip mean pairwise L2) & 4.2699 & 23.3346 & 21.6831 \\
+$B-W$ (gap) & 2.5721 & 1.6148 & 1.5216 \\
+\midrule
+\multicolumn{4}{l}{\textit{Trajectory geometry}} \\
+trajectory\_straightness ($z$) & \good{0.2178} & \bad{0.0819} & \bad{0.0823} \\
+mean\_velocity\_cosine ($z$) & \good{-0.0416} & \bad{-0.3986} & \bad{-0.3974} \\
+start\_end\_displacement ($z$) & 0.4139 & 1.3658 & 1.3685 \\
+direction\_reversal\_fraction ($x$) & \good{0.5139} & \bad{0.9850} & \bad{0.9875} \\
+\midrule
+\multicolumn{4}{l}{\textit{Temporal order}} \\
+time\_progress\_spearman ($z$) & \bad{0.4753} & \bad{0.7367} & \bad{0.7622} \\
+distance\_to\_goal\_spearman ($x$) & \bad{0.3556} & \bad{0.3321} & \bad{0.3654} \\
+adjacent\_temporal\_nn\_fraction ($z$) & 0.3407 & 0.5899 & 0.6222 \\
+\midrule
+\multicolumn{4}{l}{\textit{Cross-clip temporal consistency}} \\
+tcc\_kendall\_tau (mean) & 0.0399 & 0.0000 & 0.0162 \\
+\midrule
+\multicolumn{4}{l}{\textit{Semantic information}} \\
+chirality.mean\_accuracy ($x$) & \bad{0.5808} & \bad{0.5330} & \bad{0.5241} \\
+content.knn.balanced\_acc & 0.0666 & 0.0481 & 0.0718 \\
+content.linear.balanced\_acc & 0.0518 & 0.0834 & 0.0892 \\
+change.knn.balanced\_acc & 0.0717 & 0.0571 & 0.0444 \\
+change.linear.balanced\_acc & 0.0775 & 0.0460 & 0.0434 \\
+content+change.knn.balanced\_acc & 0.0762 & 0.0581 & 0.0599 \\
+content+change.linear.balanced\_acc & 0.0929 & 0.0720 & 0.0875 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Additional metrics, K400 10\% patch-channel --- same three checkpoints as
+Table~\ref{tab:regularizer-comparison-main}.}
+\label{tab:regularizer-comparison-additional}
+\begin{tabular}{lccc}
+\toprule
+Metric & noreg & sigreg0.1 & sw0.1 (vicreg) \\
+\midrule
+\multicolumn{4}{l}{\textit{Trajectory geometry and raw variants}} \\
+mean\_chord\_alignment ($z$) & 0.1117 & 0.0839 & 0.0836 \\
+trajectory\_straightness\_raw ($x$) & 0.2315 & 0.0817 & 0.0821 \\
+mean\_velocity\_cosine\_raw ($x$) & -0.0290 & -0.3987 & -0.3974 \\
+mean\_chord\_alignment\_raw ($x$) & 0.1222 & 0.0838 & 0.0835 \\
+\midrule
+\multicolumn{4}{l}{\textit{Raw embedding magnitude}} \\
+norm\_growth ($x$) & 1.2002 & 0.9980 & 0.9998 \\
+norm\_std\_within\_clip ($x$) & 1.0712 & 0.2307 & 0.4315 \\
+adjacent\_l2\_distance ($x$) & 0.7172 & 18.8025 & 17.4025 \\
+mean\_norm ($x$) & 4.3421 & 16.5950 & 15.3916 \\
+\midrule
+\multicolumn{4}{l}{\textit{Change-direction consistency}} \\
+change\_direction.gap & 0.1714 & 0.0011 & 0.0019 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Best-epoch selection and completion.}
+\label{tab:regularizer-comparison-stability}
+\begin{tabular}{lcc}
+\toprule
+Checkpoint & Best epoch & Total logged \\
+\midrule
+noreg & 115/115 & full, no divergence \\
+sigreg0.1 & 113/113 & full, no divergence \\
+sw0.1 (vicreg) & 113/115 & full, no divergence \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Loss terms, epoch 0 $\to$ best epoch.}
+\label{tab:regularizer-comparison-losses}
+\footnotesize
+\begin{tabular}{llccc}
+\toprule
+Checkpoint & Loss term & Epoch 0 & Best epoch & Reduction \\
+\midrule
+\multirow{3}{*}{noreg (best=ep115)}
+ & train\_pred & 0.277 & 0.035 & $\downarrow$87\% \\
+ & train\_straighten & 1.252 & 0.808 & $\downarrow$35\% \\
+ & train\_total & 0.402 & 0.116 & $\downarrow$71\% \\
+\midrule
+\multirow{4}{*}{sigreg0.1 (best=ep113)}
+ & train\_pred & 0.523 & 0.211 & $\downarrow$60\% \\
+ & train\_straighten & 1.404 & 1.439 & $\uparrow$2\% (worse) \\
+ & train\_sigreg & 21.875 & 5.438 & $\downarrow$75\% \\
+ & train\_total & 4.629 & 1.311 & $\downarrow$72\% \\
+\midrule
+\multirow{5}{*}{sw0.1 (vicreg) (best=ep113)}
+ & train\_pred & 0.328 & 0.097 & $\downarrow$70\% \\
+ & train\_straighten & 1.398 & 1.392 & $\downarrow$0.4\% (flat) \\
+ & train\_vicreg\_std & 0.210 & 0.026 & $\downarrow$87\% \\
+ & train\_vicreg\_cov & 2.564 & 1.272 & $\downarrow$50\% \\
+ & train\_total & 0.779 & 0.314 & $\downarrow$60\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Inference}
+
+\textbf{This directly resolves the open question from the window-size/VICReg ablation.}
+That experiment found VICReg-on-token-granularity made no difference to collapse no
+matter the window size, and flagged the likely cause: VICReg was regularizing the raw
+per-patch tensor, not $z_{\mathrm{agg}}$, the tensor the straightening loss and every
+collapse metric actually operate on (Section~\ref{sec:methodology-architecture}). This
+experiment tests that diagnosis directly by moving the same regularizer weights onto
+$z_{\mathrm{agg}}$ instead, on a fresh \texttt{noreg} baseline for the same architecture.
+
+\textbf{The fix works --- \texttt{effective\_rank\_fraction} goes from collapsed to
+healthier than either DINOv2 baseline.} \texttt{noreg} reproduces the same severe
+collapse as every checkpoint in the previous experiment (0.0084, red). Regularizing
+$z_{\mathrm{agg}}$ directly changes that completely: \texttt{sigreg0.1} reaches 0.8115
+(a near-exact tie with DINOv2\textsubscript{CLS}'s 0.8120, left uncolored) and
+\texttt{sw0.1 (vicreg)} reaches 0.9756, green --- clearly beating both DINOv2 baselines,
+the first trained checkpoint in this log to do so.
+
+\textbf{Fixing collapse flips every straightness-family metric from green to red ---
+the mirror image of the previous experiment's blind spot.} \texttt{noreg} keeps the same
+pattern seen throughout the window/VICReg ablation: \texttt{trajectory\_straightness}
+(0.2178), \texttt{mean\_velocity\_cosine} (-0.0416), and \texttt{direction\_reversal\_fraction}
+(0.5139) all beat both DINOv2 baselines, green, while collapsed. Once collapse is fixed,
+those same three metrics go red for both \texttt{sigreg0.1} and \texttt{sw0.1 (vicreg)}
+(\texttt{trajectory\_straightness} drops to 0.082, \texttt{direction\_reversal\_fraction}
+rises to 0.985--0.988, near the i.i.d.-noise reference of 1.0). \texttt{train\_straighten}
+itself is flat-to-worse for both regularized runs even as \texttt{train\_total} falls
+sharply --- the optimizer satisfies collapse-avoidance by adopting a noisier, more
+reversal-prone trajectory, not a smoother one. This is the sharpest confirmation yet that
+straightness and collapse-avoidance compete for the same weight budget rather than both
+improving together, and that a straightness number alone --- healthy or not --- says
+nothing about whether the representation is collapsed.
+
+\textbf{Unlike straightness, \texttt{time\_progress\_spearman} and
+\texttt{distance\_to\_goal\_spearman} stay red for all three checkpoints, fixed collapse
+or not.} \texttt{time\_progress\_spearman} rises with each regularizer (0.475 $\to$
+0.737 $\to$ 0.762) but never gets close to either DINOv2 baseline (0.90--0.91);
+\texttt{distance\_to\_goal\_spearman} barely moves at all (0.332--0.365, vs.\ 0.61--0.62
+baseline) and is actually \emph{lowest} for \texttt{sigreg0.1}, the middle point of the
+three. So fixing \texttt{effective\_rank\_fraction} buys real gains on
+\texttt{time\_progress\_spearman} without buying anything close to frozen-encoder-level
+temporal ordering --- rank, straightness, and ordinality are three separate axes here,
+not two.
+
+\textbf{None of the three reach frozen-encoder territory on chirality, regardless of
+collapse status.} \texttt{chirality.mean\_accuracy} is red for all three (0.52--0.58,
+vs.\ 0.78--0.80 for both DINOv2 baselines) --- fixing rank collapse did not recover
+semantic/directional content on this probe specifically, unlike V-JEPA2.1 in the
+previous experiment, which combined low rank with above-baseline semantic probes. Fixing
+collapse is necessary but not sufficient here.

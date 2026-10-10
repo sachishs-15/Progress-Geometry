@@ -1,0 +1,6 @@
+synth_task_00_vid04
+synth_task_01_vid06
+synth_task_02_vid04
+synth_task_03_vid03
+synth_task_04_vid03
+synth_task_05_vid06

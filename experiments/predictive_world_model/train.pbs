@@ -1,0 +1,26 @@
+#!/bin/bash
+#PBS -N pwm_train
+#PBS -l select=1:ncpus=16:mem=140gb:ngpus=1
+#PBS -l walltime=48:00:00
+#PBS -o /home/sachish/proc-planning/experiments/predictive_world_model/pbslogs/
+#PBS -e /home/sachish/proc-planning/experiments/predictive_world_model/pbslogs/
+
+CONFIG="${CONFIG:-/home/sachish/proc-planning/experiments/predictive_world_model/configs/cls_mlp_k400.yaml}"
+EXTRA_ARGS="${EXTRA_ARGS:-}"
+
+FEATURES_TO_CHECK=$(echo "$EXTRA_ARGS" | grep -oP '(?<=--features )\S+' || true)
+if [ -z "$FEATURES_TO_CHECK" ]; then
+    FEATURES_TO_CHECK=$(grep -oP '^features:\s*\K\S+' "$CONFIG" 2>/dev/null || true)
+fi
+for i in $(seq 1 300); do
+    if [ -n "$FEATURES_TO_CHECK" ]; then
+        ls -la "$(dirname "$FEATURES_TO_CHECK")" >/dev/null 2>&1
+        [ -f "$FEATURES_TO_CHECK" ] && break
+    else
+        ls /mnt/rdata7 >/dev/null 2>&1 && break
+    fi
+    sleep 2
+done
+
+cd /home/sachish/proc-planning/experiments/predictive_world_model
+bash train.sh "$CONFIG" $EXTRA_ARGS

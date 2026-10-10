@@ -1,0 +1,67 @@
+# Data (symlinked from elsewhere)
+/data
+/sample_videos
+
+# External baseline repos — tracked via external/README.md manifest, not git
+external/*
+!external/README.md
+!external/.gitkeep
+
+# Experiment outputs (keep small .md/.yaml/.py/.txt; drop bulky data)
+experiments/*/checkpoints/
+experiments/*/wandb/
+experiments/**/outputs/
+experiments/**/runs/
+experiments/**/data_cache/
+experiments/**/results*/**/*.json
+experiments/**/results*/**/*.csv
+experiments/**/results*/**/*.png
+experiments/**/results*/**/*.jpg
+experiments/encoder_planning_eval/progress_metrics/*.json
+experiments/encoder_planning_eval/representation_probes/**/*.json
+/results/**/*.csv
+/results/**/*.png
+/results/**/*.jpg
+/results/**/*.json
+!experiments/.gitkeep
+
+# Logs
+*.log
+logs/
+pbslogs/
+slurm-*.out
+*.o[0-9]*
+*.e[0-9]*
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.ipynb_checkpoints/
+
+# Env / secrets
+.env
+
+# Weights / arrays / blobs
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.npz
+*.npy
+*.pkl
+*.h5
+*.bin
+*.mp4
+*.avi
+*.mov
+
+# Precomputed features
+scripts/local/precompute_features/logs/
+
+# OS / editor
+.DS_Store
+.vscode/

@@ -1,0 +1,23 @@
+#!/bin/bash
+#PBS -N pwm_ep19_features
+#PBS -l select=1:ncpus=32:mem=128gb:ngpus=4
+#PBS -l walltime=12:00:00
+#PBS -o /home/sachish/proc-planning/experiments/oad_goalstep/pbslogs/
+#PBS -e /home/sachish/proc-planning/experiments/oad_goalstep/pbslogs/
+
+for i in $(seq 1 300); do ls /mnt/rdata7 >/dev/null 2>&1 && break; sleep 2; done
+
+R=/mnt/rdata7/proprogress/data/ego4dgoal/oad_4fps
+RUN=/home/sachish/proc-planning/experiments/predictive_world_model/checkpoints/pwm_patch_channel_paper_window0_vicreg_ego4dgoal_32f4fps
+PY=/home/sachish/lstr-venv/bin/python
+cd /home/sachish/proc-planning/experiments/oad_goalstep
+
+for i in $(seq 0 31); do
+  ( CUDA_VISIBLE_DEVICES=$((i % 4)) OMP_NUM_THREADS=1 $PY -u extract_pwm_features.py \
+      --root $R --fps 4 --data-info $R/data_info.json --run-dir $RUN --ckpt epoch19.ckpt --name pwm_ep19 \
+      --shard-id $i --num-shards 32 --batch 16 > pbslogs/pwm19_$i.log 2>&1
+    echo "shard $i exit $?" >> pbslogs/pwm19_exit.log ) &
+done
+wait
+
+$PY check_features.py --root $R --features $R/pwm_ep19_agg

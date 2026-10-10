@@ -1,0 +1,110 @@
+# cls-token counterpart to patch_channel_paper_window0_sigreg.yaml -- the SIGReg variant
+# of the three-way regularizer comparison (cls_mlp_paper_window0{,_vicreg,_sigreg}.yaml),
+# matching that patch family setting-for-setting wherever a setting is expressible in cls
+# mode. Diff against cls_mlp_paper_window0.yaml: only checkpoint_dir, sigreg_weight and
+# sigreg_num_slices differ.
+#
+# The hypothesis this file tests: VICReg's relu(1 - std) hinge is one-sided and reads
+# unnormalized z, so it is fully satisfied (penalty exactly 0) once per-dim std >= 1 and
+# exerts no pressure against further scale inflation. SIGReg instead tests the embedding
+# distribution against a standard isotropic Gaussian, so it is two-sided in scale --
+# measured on real embeddings, its penalty bottoms out around scale sqrt(384) ~= 20 and
+# rises again by scale 100, exactly where VICReg has flatlined at 0. If that holds,
+# train_z_norm here should settle near 20 instead of running away as it did in
+# checkpoints/pwm_cls_mlp_k400.
+#
+# Purpose: the patch paper-mirror trio answers "which anti-collapse term does the
+# reference's own architecture need?"; this trio asks the same question of cls mode,
+# where the collapse failure is KNOWN to look different. checkpoints/pwm_cls_mlp_k400
+# (LayerNorm + VICReg) inflated ||z|| from 20 to 146 over training while VICReg's own
+# penalty fell to ~0.009 -- VICReg's relu(1 - std) hinge is one-sided and unnormalized,
+# so scale inflation satisfies it for free while directional diversity collapses. SIGReg
+# (_sigreg.yaml) tests against a standard isotropic Gaussian instead, so it is two-sided
+# in scale and should pull ||z|| toward sqrt(384) ~= 20 rather than letting it run. This
+# file is the control for both: stop-grad as the sole anti-collapse mechanism, which is
+# the reference's own main-experiment recipe (Sec 3.3 "Collapse prevention").
+#
+# MATCHED to the patch trio: pred_loss=l2, pred_weight, straighten_weight, stop_grad,
+# window_size, encoder_lr/predictor_lr, weight_decay=0, grad_clip=0 (reference does no
+# clipping), epochs, save_every, batch_size, amp, seed, val_fraction, n_frames.
+#
+# NOT matched, and cannot be:
+#   features -- the cls-shaped 10% K400 file, not dinov2_noreg's patch-shaped one. Same
+#     10% split (24,126 clips = 10% of 241,258) and same DINOv2 ViT-S/14 backbone, but
+#     CLS tokens rather than the 196-token patch grid, so 1 token/frame instead of 196.
+#   latent_dim -- 384 here and it is the REAL latent width. In channel mode latent_dim is
+#     inert and the actual width is channel_out_dim=8, so the patch predictor works on
+#     196 tokens x 8 dims per frame while this one works on 1 token x 384 dims. The two
+#     trios are internally comparable but not comparable to each other on latent width.
+#   predictor -- CausalPredictor (nhead/pred_num_layers) rather than the patch family's
+#     BlockCausalPredictor (depth/heads/dim_head/mlp_dim). Different module, different
+#     knobs; no meaningful one-to-one mapping.
+#   agg head -- omitted. ProceduralWorldModel only builds one for projector_type=channel,
+#     so there is no agg_mlp_hidden_dim/agg_out_dim to set, and the curvature/VICReg terms
+#     here read the per-frame latent directly instead of an aggregated one.
+#   vicreg_granularity -- omitted. train.py: "Only differs for projector_type=channel",
+#     i.e. it is a no-op in cls mode; setting it would imply a choice that isn't being made.
+#
+# ENCODER: residual_mlp, not the default mlp. ClsMlpEncoder ("mlp") is a bare
+# Linear(384->384) -> GELU -> Linear(384->384) with no residual path and a hardcoded
+# depth of 2 -- it cannot be deepened and everything it learns must be re-derived rather
+# than accumulated as corrections. ResidualMlpEncoder stacks encoder_depth pre-norm
+# residual blocks (z = z + MLP(LayerNorm(z))), each expanding to
+# encoder_expansion*latent_dim, which is the standard transformer-FFN arrangement and is
+# what actually trains at depth. 2 blocks x 4x expansion = ~2.37M encoder params vs mlp's
+# 296K -- depth 2 rather than the class default of 4 so the encoder stays SMALLER than
+# the 3.55M CausalPredictor, preserving cls mode's predictor-dominant balance (depth 4
+# would put 4.73M in the encoder and invert it).
+#
+# Still STRICTLY PER-FRAME: z_t = f(x_t), no mixing across time anywhere in the encoder
+# (tests/test_model.py::test_residual_mlp_encoder_is_strictly_per_frame pins this). That
+# is deliberate -- PatchProjectorEncoder is per-frame too (it folds T into the batch
+# dim), all temporal modelling lives in the predictor, and that separation is what keeps
+# z a state you can roll forward at planning time. It also avoids a measured failure
+# mode: giving the encoder causal cross-frame attention makes it approximate a
+# cumulative mean, and a plain cumulative mean scores a PERFECT 1.0 on every progress
+# metric while carrying no content -- so a temporal encoder would inflate these numbers
+# without improving the representation.
+
+features: /mnt/rdata7/proprogress/data/kinetics-dataset/precomputed_features/k400_train_10pct.pt
+checkpoint_dir: checkpoints/pwm_cls_residual_mlp_paper_window0_sigreg
+val_fraction: 0.0
+seed: 0
+
+feature_dim: 384
+latent_dim: 384
+norm_type: layernorm
+encoder_type: residual_mlp
+encoder_depth: 2
+encoder_expansion: 4
+encoder_dropout: 0.0
+token_mode: cls
+n_frames: 16
+max_len: 16
+
+nhead: 8
+pred_num_layers: 2
+dropout: 0.1
+
+window_size: 0
+
+pred_loss: l2
+pred_weight: 1.0
+straighten_weight: 0.1
+vicreg_std_weight: 0.0
+vicreg_cov_weight: 0.0
+sigreg_weight: 0.1
+sigreg_num_slices: 1024
+chord_weight: 0.0
+stop_grad: true
+
+encoder_lr: 1e-5
+predictor_lr: 5e-4
+weight_decay: 0.0
+grad_clip: 0.0
+
+epochs: 50
+save_every: 10
+batch_size: 32
+amp: true
+num_workers: 4

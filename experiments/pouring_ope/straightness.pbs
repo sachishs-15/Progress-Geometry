@@ -1,0 +1,13 @@
+#!/bin/bash
+#PBS -N pouring_straightness
+#PBS -l select=1:ncpus=8:mem=64gb:ngpus=1
+#PBS -l walltime=04:00:00
+#PBS -o /home/sachish/proc-planning/experiments/pouring_ope/pbslogs/
+#PBS -e /home/sachish/proc-planning/experiments/pouring_ope/pbslogs/
+
+P=/home/sachish/proc-planning/experiments/predictive_world_model/checkpoints
+cd /home/sachish/proc-planning/experiments/pouring_ope
+/home/sachish/.conda/envs/frozen-encoders/bin/python -u straightness.py \
+  --checkpoints pouring_bs4=$P/pwm_pouring_patch_channel_paper_window3_vicreg_bs4/last.ckpt \
+                pouring_bs16=$P/pwm_pouring_patch_channel_paper_window3_vicreg/last.ckpt \
+                k400_zeroshot=$P/pwm_patch_channel_paper_window3_vicreg/last.ckpt

@@ -1,0 +1,66 @@
+# progress_regression + the Ordinal Entropy regularizer (ICLR 2023, arXiv:2301.08915).
+#
+# This is the config that actually TESTS the claim the ordinal_* family is built around.
+# That paper argues cross-entropy beats MSE on a continuous target because it learns a
+# higher-entropy feature space -- and that you can get the benefit without discretising,
+# by regularizing features directly. So: if `ordinal_ce` beats `progress_regression` in
+# the main table, and this config closes that gap while remaining a regression, the
+# explanation is feature entropy. If it doesn't, the explanation is something else.
+#
+# lambda_d spreads per-label feature centres apart (weighted by label distance, which is
+# what makes it ordinal rather than merely high-entropy); lambda_t pulls frames toward
+# their own centre.
+objective: progress_regression
+objective_kwargs:
+  loss: l2
+  depth: 2
+  sigmoid: true
+# Weights are calibrated to THIS encoder, not copied from the paper (whose lambda_d /
+# lambda_t are learnable and live in its own feature scale). With clip_rmsnorm's
+# ||z|| ~ 19.5, the raw terms measured on a real batch are L_t = 15.5 and L_d = -1.49
+# against an MSE of 0.097 -- at weight 1.0 the tightness term is 160x the task loss and
+# would simply collapse every frame onto its label centre, which scores WELL on
+# ordinality metrics while destroying the representation. These put each term at roughly
+# 30% of the task loss at initialization.
+aux_weights:
+  ordinal_entropy_d: 0.02
+  ordinal_entropy_t: 0.002
+checkpoint_dir: checkpoints/ordinal_entropy
+
+# ---- Data: SSv2, DINOv2 ViT-S/14 CLS features, 16 frames evenly spread per video ----
+features: /mnt/rdata7/proprogress/data/SSv2/precomputed_features/dinov2/ssv2_train.pt
+val_features: /mnt/rdata7/proprogress/data/SSv2/precomputed_features/dinov2/ssv2_validation.pt
+train_manifest: /home/sachish/proc-planning/data/chirality_in_action/SSv2/ssv2_train.csv
+val_manifest: /home/sachish/proc-planning/data/chirality_in_action/SSv2/ssv2_validation.csv
+
+# ---- Held IDENTICAL across every objective in this project. Changing any of these in
+# ---- one config and not the others invalidates the comparison -- that is the whole
+# ---- point of the folder (see README.md).
+feature_dim: 384
+latent_dim: 384
+hidden_dim: 384
+use_projector: true
+norm_type: clip_rmsnorm   # one RMS scale per clip: the only norm option that cannot
+                          # distort within-clip straightness, which several objectives
+                          # here would otherwise be measured through. See
+                          # ../predictive_world_model/models/norms.py.
+n_frames: 16
+epochs: 100
+batch_size: 128
+lr: 0.0001
+head_lr: 0.0005           # the objective's head starts from scratch; the encoder starts
+                          # from frozen DINOv2 and only needs a correction.
+weight_decay: 0.00001
+grad_clip: 1.0
+num_workers: 4
+seed: 0
+
+# ---- Checkpoint selection: on held-out ordinality, not on the loss (not comparable
+# ---- across objectives). Same clip_progress_metrics the final table uses.
+eval_every: 5
+eval_clips: 512
+monitor_source: train     # NOT val: make_eval_spec.py scores the final table on
+                          # ssv2_validation, so selecting best.ckpt there would pick every
+                          # row by peeking at its own reported metric.
+monitor_metric: time_progress_spearman
+monitor_mode: max

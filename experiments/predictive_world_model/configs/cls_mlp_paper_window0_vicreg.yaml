@@ -1,0 +1,82 @@
+# cls-token counterpart to patch_channel_paper_window0_vicreg.yaml -- the VICReg variant
+# of the three-way regularizer comparison (cls_mlp_paper_window0{,_vicreg,_sigreg}.yaml),
+# matching that patch family setting-for-setting wherever a setting is expressible in cls
+# mode. Diff against cls_mlp_paper_window0.yaml: only checkpoint_dir and the two
+# vicreg_*_weight values differ.
+#
+# This is the variant EXPECTED TO FAIL, and it is here to demonstrate the failure
+# cleanly rather than to win: checkpoints/pwm_cls_mlp_k400 ran this recipe (LayerNorm +
+# VICReg) and inflated ||z|| 20 -> 146 while train_vicreg_std fell to ~0.009. Watch
+# train_z_norm in train_log.csv.
+#
+# Purpose: the patch paper-mirror trio answers "which anti-collapse term does the
+# reference's own architecture need?"; this trio asks the same question of cls mode,
+# where the collapse failure is KNOWN to look different. checkpoints/pwm_cls_mlp_k400
+# (LayerNorm + VICReg) inflated ||z|| from 20 to 146 over training while VICReg's own
+# penalty fell to ~0.009 -- VICReg's relu(1 - std) hinge is one-sided and unnormalized,
+# so scale inflation satisfies it for free while directional diversity collapses. SIGReg
+# (_sigreg.yaml) tests against a standard isotropic Gaussian instead, so it is two-sided
+# in scale and should pull ||z|| toward sqrt(384) ~= 20 rather than letting it run. This
+# file is the control for both: stop-grad as the sole anti-collapse mechanism, which is
+# the reference's own main-experiment recipe (Sec 3.3 "Collapse prevention").
+#
+# MATCHED to the patch trio: pred_loss=l2, pred_weight, straighten_weight, stop_grad,
+# window_size, encoder_lr/predictor_lr, weight_decay=0, grad_clip=0 (reference does no
+# clipping), epochs, save_every, batch_size, amp, seed, val_fraction, n_frames.
+#
+# NOT matched, and cannot be:
+#   features -- the cls-shaped 10% K400 file, not dinov2_noreg's patch-shaped one. Same
+#     10% split (24,126 clips = 10% of 241,258) and same DINOv2 ViT-S/14 backbone, but
+#     CLS tokens rather than the 196-token patch grid, so 1 token/frame instead of 196.
+#   latent_dim -- 384 here and it is the REAL latent width. In channel mode latent_dim is
+#     inert and the actual width is channel_out_dim=8, so the patch predictor works on
+#     196 tokens x 8 dims per frame while this one works on 1 token x 384 dims. The two
+#     trios are internally comparable but not comparable to each other on latent width.
+#   predictor -- CausalPredictor (nhead/pred_num_layers) rather than the patch family's
+#     BlockCausalPredictor (depth/heads/dim_head/mlp_dim). Different module, different
+#     knobs; no meaningful one-to-one mapping.
+#   agg head -- omitted. ProceduralWorldModel only builds one for projector_type=channel,
+#     so there is no agg_mlp_hidden_dim/agg_out_dim to set, and the curvature/VICReg terms
+#     here read the per-frame latent directly instead of an aggregated one.
+#   vicreg_granularity -- omitted. train.py: "Only differs for projector_type=channel",
+#     i.e. it is a no-op in cls mode; setting it would imply a choice that isn't being made.
+
+features: /mnt/rdata7/proprogress/data/kinetics-dataset/precomputed_features/k400_train_10pct.pt
+checkpoint_dir: checkpoints/pwm_cls_mlp_paper_window0_vicreg
+val_fraction: 0.0
+seed: 0
+
+feature_dim: 384
+latent_dim: 384
+hidden_dim: 384
+use_projector: true
+norm_type: layernorm
+token_mode: cls
+n_frames: 16
+max_len: 16
+
+nhead: 8
+pred_num_layers: 2
+dropout: 0.1
+
+window_size: 0
+
+pred_loss: l2
+pred_weight: 1.0
+straighten_weight: 0.1
+vicreg_std_weight: 1.0
+vicreg_cov_weight: 0.04
+sigreg_weight: 0.0
+chord_weight: 0.0
+stop_grad: true
+
+encoder_lr: 1e-5
+predictor_lr: 5e-4
+weight_decay: 0.0
+grad_clip: 0.0
+
+epochs: 50
+save_every: 10
+batch_size: 32
+amp: true
+num_workers: 4

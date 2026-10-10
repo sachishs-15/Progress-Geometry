@@ -1,0 +1,156 @@
+\subsection{Straighten-Weight Sweep (VICReg, K400 10\%, Patch-Channel, Window0)}
+\label{exp:sw-sweep-vicreg}
+
+\paragraph{What we tried} Extended the \texttt{sw0.1 (vicreg)} checkpoint from
+Section~\ref{exp:regularizer-comparison-k400} (\texttt{window\_size=0},
+\texttt{batch\_size=16}, \texttt{vicreg\_std\_weight=1.0}, \texttt{vicreg\_cov\_weight=0.04},
+\texttt{vicreg\_granularity} unset $\to$ default \texttt{agg}) across a
+\texttt{straighten\_weight} sweep, $\mathrm{sw} \in \{0.1, 0.5, 1.0, 1.5, 2.0\}$
+(\texttt{pwm\_patch\_channel\_k400\_10pct\_vicreg\_window0\_batch16\_1} for sw0.1,
+\texttt{pwm\_patch\_channel\_k400\_10pct\_vicreg\_sw\{0.5,1,1.5,2\}\_window0\_batch16}
+for the rest), all else held fixed, all scored at epoch 49. Scored with the same full
+metric suite from Section~\ref{sec:methodology} (Main and Additional), and compared loss
+values at epoch 0 vs.\ epoch 49 for each.
+
+\paragraph{Result}
+
+\begin{table}[H]
+\centering
+\caption{Main metrics across the straighten-weight sweep, all at epoch 49.}
+\label{tab:sw-sweep-main}
+\begin{tabular}{lccccc}
+\toprule
+Metric & sw0.1 & sw0.5 & sw1.0 & sw1.5 & sw2.0 \\
+\midrule
+\multicolumn{6}{l}{\textit{Whole-dataset collapse and spread}} \\
+effective\_rank\_fraction & \good{0.9640} & \good{0.9230} & \bad{0.6310} & \bad{0.3470} & \bad{0.2010} \\
+$W$ (within-clip mean pairwise L2) & 18.93 & 15.25 & 11.40 & 9.62 & 8.51 \\
+$B$ (across-clip mean pairwise L2) & 20.77 & 20.05 & 18.13 & 16.81 & 15.51 \\
+$B-W$ (gap) & 1.84 & 4.80 & 6.73 & 7.19 & 7.00 \\
+\midrule
+\multicolumn{6}{l}{\textit{Trajectory geometry}} \\
+trajectory\_straightness ($z$) & \bad{0.0854} & \bad{0.1320} & \good{0.1881} & \good{0.2036} & \good{0.2028} \\
+mean\_velocity\_cosine ($z$) & \bad{-0.3809} & \good{-0.2048} & \good{-0.0675} & \good{-0.0543} & \good{-0.0730} \\
+start\_end\_displacement ($z$) & 1.346 & 1.230 & 1.062 & 0.959 & 0.903 \\
+direction\_reversal\_fraction ($x$) & \bad{0.987} & \good{0.827} & \good{0.555} & \good{0.532} & \good{0.540} \\
+\midrule
+\multicolumn{6}{l}{\textit{Temporal order}} \\
+time\_progress\_spearman ($z$) & \bad{0.804} & \bad{0.896} & \bad{0.812} & \bad{0.738} & \bad{0.692} \\
+distance\_to\_goal\_spearman ($x$) & \bad{0.409} & \bad{0.550} & \bad{0.549} & \bad{0.515} & \bad{0.489} \\
+adjacent\_temporal\_nn\_fraction ($z$) & 0.6691 & 0.8141 & 0.7144 & 0.6381 & 0.5781 \\
+\midrule
+\multicolumn{6}{l}{\textit{Cross-clip temporal consistency}} \\
+tcc\_kendall\_tau (mean) & 0.0050 & 0.0377 & 0.0760 & 0.0941 & 0.0947 \\
+\midrule
+\multicolumn{6}{l}{\textit{Semantic information}} \\
+chirality.mean\_accuracy ($x$) & \bad{0.556} & \bad{0.627} & \bad{0.662} & \bad{0.629} & \bad{0.634} \\
+content.knn.balanced\_acc & 0.071 & 0.141 & 0.132 & 0.127 & 0.109 \\
+content.linear.balanced\_acc & 0.081 & 0.151 & 0.180 & 0.153 & 0.177 \\
+change.knn.balanced\_acc & 0.047 & 0.166 & 0.211 & 0.168 & 0.184 \\
+change.linear.balanced\_acc & 0.066 & 0.195 & 0.197 & 0.182 & 0.209 \\
+content+change.knn.balanced\_acc & 0.0645 & 0.2102 & 0.2394 & 0.2283 & 0.2141 \\
+content+change.linear.balanced\_acc & 0.1117 & 0.2323 & 0.2553 & 0.2418 & 0.2606 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Additional metrics across the straighten-weight sweep --- same five checkpoints
+as Table~\ref{tab:sw-sweep-main}.}
+\label{tab:sw-sweep-additional}
+\begin{tabular}{lccccc}
+\toprule
+Metric & sw0.1 & sw0.5 & sw1.0 & sw1.5 & sw2.0 \\
+\midrule
+\multicolumn{6}{l}{\textit{Trajectory geometry and raw variants}} \\
+mean\_chord\_alignment ($z$) & 0.0867 & 0.1113 & 0.1293 & 0.1287 & 0.1239 \\
+trajectory\_straightness\_raw ($x$) & 0.085 & 0.132 & 0.188 & 0.204 & 0.203 \\
+mean\_velocity\_cosine\_raw ($x$) & -0.381 & -0.205 & -0.068 & -0.054 & -0.073 \\
+mean\_chord\_alignment\_raw ($x$) & 0.087 & 0.111 & 0.129 & 0.129 & 0.124 \\
+\midrule
+\multicolumn{6}{l}{\textit{Raw embedding magnitude}} \\
+norm\_growth ($x$) & 1.001 & 1.004 & 1.003 & 1.000 & 1.000 \\
+norm\_std\_within\_clip ($x$) & 0.257 & 0.241 & 0.169 & 0.107 & 0.139 \\
+mean\_norm ($x$) & 14.83 & 14.39 & 13.30 & 12.60 & 11.87 \\
+\midrule
+\multicolumn{6}{l}{\textit{Change-direction consistency}} \\
+change\_direction.gap & 0.0018 & 0.0179 & 0.0635 & 0.0825 & 0.0923 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Loss values, epoch 0 vs.\ epoch 49, all five sweep points.}
+\label{tab:sw-sweep-losses}
+\footnotesize
+\begin{tabular}{lccccc}
+\toprule
+Checkpoint & train\_pred & train\_straighten & vicreg\_std & vicreg\_cov & train\_total \\
+\midrule
+sw0.1 epoch0 & 0.328 & 1.398 & 0.210 & 2.564 & 0.779 \\
+sw0.1 epoch49 & 0.111 & 1.410 & 0.036 & 1.497 & 0.348 \\
+sw0.5 epoch0 & 0.336 & 1.380 & 0.215 & 2.668 & 1.348 \\
+sw0.5 epoch49 & 0.132 & 1.176 & 0.070 & 2.681 & 0.897 \\
+sw1.0 epoch0 & 0.351 & 1.355 & 0.222 & 2.831 & 2.042 \\
+sw1.0 epoch49 & 0.101 & 0.969 & 0.138 & 4.049 & 1.370 \\
+sw1.5 epoch0 & 0.359 & 1.338 & 0.229 & 2.988 & 2.714 \\
+sw1.5 epoch49 & 0.106 & 0.835 & 0.195 & 4.556 & 1.735 \\
+sw2.0 epoch0 & 0.364 & 1.323 & 0.237 & 3.142 & 3.372 \\
+sw2.0 epoch49 & 0.116 & 0.746 & 0.272 & 4.443 & 2.057 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Inference}
+
+\textbf{This extends the previous experiment's working \texttt{sw0.1 (vicreg)}
+checkpoint (the one that beat both DINOv2 baselines on \texttt{effective\_rank\_fraction})
+across a range of \texttt{straighten\_weight}, to see whether that fix holds as the
+straightening objective is pushed harder.} All else is fixed at the previous
+experiment's winning recipe (VICReg on $z_{\mathrm{agg}}$); only \texttt{sw} varies.
+
+\textbf{Rank collapses back in as \texttt{sw} rises, in a clean, monotonic trade against
+straightness --- the same tension as the last two experiments, now as a continuous
+dial rather than three discrete points.} \texttt{effective\_rank\_fraction} is green
+(beats both baselines) only at sw0.1 (0.964) and sw0.5 (0.923); by sw1.0 it has fallen
+to 0.631, red, and keeps falling to 0.201 by sw2.0 --- back into the same collapsed
+territory as the un-fixed window/VICReg ablation two experiments ago.
+\texttt{trajectory\_straightness} moves the opposite way: red (below both baselines) at
+sw0.1--0.5, green from sw1.0 onward. \texttt{direction\_reversal\_fraction} and
+\texttt{mean\_velocity\_cosine} track the same crossover, flipping from red to green
+between sw0.1 and sw0.5. There is no \texttt{sw} in this sweep where collapse and
+straightness are both simultaneously green.
+
+\textbf{sw0.1 is a genuine failure point, not just the conservative end of a trend.} Its
+\texttt{train\_straighten} at epoch 49 (1.410) is \emph{worse} than its own epoch-0 value
+(1.398) --- the optimizer effectively abandons the straightening objective at this
+weight even as \texttt{train\_pred} and the VICReg terms all improve substantially in the
+same run. This is also the only point in the sweep where \texttt{effective\_rank\_fraction}
+is healthiest (0.964) yet every straightness-family metric is red and worst-in-sweep ---
+the cleanest single data point yet for "collapse-avoidance and straightening compete for
+the same weight budget," now visible within a single fixed architecture and regularizer,
+varying only one scalar.
+
+\textbf{Chirality never turns green anywhere in the sweep, unlike some frozen encoders.}
+0.556--0.662 across all five points, well below both DINOv2 baselines throughout ---
+unlike V-JEPA2.1 (Section~\ref{tab:encoder-comparison-ssv2-main}), which combined a
+straightness win with above-baseline semantic probes, no point on this sweep recovers
+chirality even where \texttt{effective\_rank\_fraction} is healthy.
+
+\textbf{\texttt{time\_progress\_spearman} and \texttt{distance\_to\_goal\_spearman} are
+red at every single point in the sweep --- unlike straightness, there is no \texttt{sw}
+here that reaches frozen-encoder-level ordinality.} \texttt{time\_progress\_spearman}
+peaks at sw0.5 (0.896) and \emph{declines} through sw1.0--2.0 (0.812 $\to$ 0.738 $\to$
+0.692), even as \texttt{trajectory\_straightness} keeps climbing through sw2.0 --- but
+even that sw0.5 peak stays below both DINOv2 baselines (0.90--0.91). A sweep tuned to
+maximize classical ordinality would stop at sw0.5; one tuned to maximize local
+straightness hasn't peaked by sw2.0 and would push further --- these are not
+interchangeable optimization targets, and neither one reaches baseline-level temporal
+ordering anywhere in this sweep. \texttt{distance\_to\_goal\_spearman} tells a similar
+story with a different peak: it rises from 0.409 (sw0.1) to roughly 0.55 at sw0.5--1.0,
+then declines again to 0.489 by sw2.0, staying red (well below the 0.61--0.62 baseline)
+throughout. Both temporal-order metrics agree the sweet spot is somewhere in the
+sw0.5--1.0 range, not at either extreme --- but neither gets this checkpoint family
+close to what a frozen encoder achieves on ordinality alone.

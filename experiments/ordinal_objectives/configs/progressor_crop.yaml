@@ -1,0 +1,55 @@
+# PROGRESSOR under random cropping -- the setting where goal conditioning should
+# actually earn its keep.
+#
+# Uncropped, every clip's goal is frame 15 of 16 evenly-spaced frames, so the goal is a
+# constant and conditioning on it adds nothing; that is exactly why plain
+# progress_regression works at all on this data. With an 8-frame crop the endpoint moves
+# every example, so "how far along" genuinely depends on which goal you were given.
+# Compare against progress_regression_crop, which faces the same moving endpoint with no
+# way to see it.
+objective: progressor
+crop_size: 8
+crop_label: local
+objective_kwargs:
+  variance: true
+  num_samples: 4
+  min_span: 2
+checkpoint_dir: checkpoints/progressor_crop8_local
+
+# ---- Data: SSv2, DINOv2 ViT-S/14 CLS features, 16 frames evenly spread per video ----
+features: /mnt/rdata7/proprogress/data/SSv2/precomputed_features/dinov2/ssv2_train.pt
+val_features: /mnt/rdata7/proprogress/data/SSv2/precomputed_features/dinov2/ssv2_validation.pt
+train_manifest: /home/sachish/proc-planning/data/chirality_in_action/SSv2/ssv2_train.csv
+val_manifest: /home/sachish/proc-planning/data/chirality_in_action/SSv2/ssv2_validation.csv
+
+# ---- Held IDENTICAL across every objective in this project. Changing any of these in
+# ---- one config and not the others invalidates the comparison -- that is the whole
+# ---- point of the folder (see README.md).
+feature_dim: 384
+latent_dim: 384
+hidden_dim: 384
+use_projector: true
+norm_type: clip_rmsnorm   # one RMS scale per clip: the only norm option that cannot
+                          # distort within-clip straightness, which several objectives
+                          # here would otherwise be measured through. See
+                          # ../predictive_world_model/models/norms.py.
+n_frames: 16
+epochs: 100
+batch_size: 128
+lr: 0.0001
+head_lr: 0.0005           # the objective's head starts from scratch; the encoder starts
+                          # from frozen DINOv2 and only needs a correction.
+weight_decay: 0.00001
+grad_clip: 1.0
+num_workers: 4
+seed: 0
+
+# ---- Checkpoint selection: on held-out ordinality, not on the loss (not comparable
+# ---- across objectives). Same clip_progress_metrics the final table uses.
+eval_every: 5
+eval_clips: 512
+monitor_source: train     # NOT val: make_eval_spec.py scores the final table on
+                          # ssv2_validation, so selecting best.ckpt there would pick every
+                          # row by peeking at its own reported metric.
+monitor_metric: time_progress_spearman
+monitor_mode: max

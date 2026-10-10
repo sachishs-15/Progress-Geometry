@@ -1,0 +1,119 @@
+# Directly mirrors external/temporal-straightening's own DINOv2(patch)+channel-projector
+# recipe -- every value below is taken from their conf/train.yaml, conf/predictor/vit.yaml,
+# conf/encoder/dino_channel.yaml, and README's "Variant overrides" table for
+# `encoder=dino_channel training.straighten=aggcos1e-1`, not this project's own defaults.
+# Companion file patch_channel_paper_window0.yaml is IDENTICAL except window_size (and
+# n_frames/checkpoint_dir) -- diff the two to see the one thing being tested.
+#
+# window_size: 3 -- reproduces the reference's actual training regime: num_hist=3,
+# num_pred=1 (a random 4-frame span drawn per __getitem__, see data/dataset.py), NOT this
+# project's own window_size=0 default (whole-clip causal in one pass). This is the file
+# that matches the paper; window0 is "what we thought"/this project's original design,
+# kept as the other half of the A/B test.
+#
+# What can't be closed even with window_size=3 (architectural gaps between the two
+# data/training pipelines, not fixable via config):
+#   - frameskip=5: the reference samples every 5th raw video frame before windowing.
+#     This project's features are precomputed as n_frames samples spread EVENLY across
+#     the whole clip (see data/dataset.py's module docstring); window_size then draws a
+#     random (window_size+1)-consecutive-frame span from THAT n_frames-length subsample,
+#     not from frameskip-5 raw video. Same window length, different frame spacing.
+#   - No action/proprioception conditioning: the reference concatenates action+proprio
+#     tokens into every latent the predictor and VICReg/curvature see (VWorldModel.encode).
+#     This project's predictor only ever sees visual latents -- unconditioned next-frame
+#     prediction, not action-conditioned prediction.
+#   - No decoder/pixel reconstruction: the reference also trains a VQVAE/conv decoder with
+#     a real image reconstruction loss in the same forward() (though gradient-detached
+#     from the encoder/predictor -- it doesn't shape their representations, only the
+#     decoder's own weights). This project has no decoder or pixel-space loss at all.
+#   - Optimizer classes: reference's encoder optimizer is plain Adam (weight_decay=0);
+#     its predictor optimizer is AdamW at PyTorch's default weight_decay=0.01. This
+#     project's build_optimizer uses ONE AdamW class with ONE shared --weight-decay for
+#     both param groups (only the Table 3 LR split is reproduced, not the optimizer-class
+#     split). Set to 0.0 below to match the encoder side; this then slightly
+#     UNDER-regularizes the predictor relative to the reference's implicit 0.01 default.
+#   - No gradient clipping in the reference at all -- grad_clip: 0.0 below disables ours.
+#   - cls-mode backbone mismatch is irrelevant here since this config is patch/channel
+#     mode, which already uses the reference's own dinov2_vits14 (no registers) via
+#     patch_hub_id below -- see patch_channel.yaml's comment if you want the cls-mode caveat.
+
+features: /mnt/rdata7/proprogress/data/kinetics-dataset/precomputed_features/dinov2_noreg/k400_train_10pct.pt
+checkpoint_dir: checkpoints/pwm_patch_channel_paper_window3
+val_fraction: 0.0
+seed: 0
+
+feature_dim: 384
+latent_dim: 384        # unused by projector_type=channel -- actual dim is channel_out_dim
+channel_out_dim: 8
+channel_hidden: 192
+num_patches: 196
+token_mode: patch
+projector_type: channel
+patch_hub_id: dinov2_vits14   # reference: conf/encoder/dino_channel.yaml name="dinov2_vits14"
+                               # -- NO registers, a different checkpoint from dinov2_vits14_reg
+patch_img_size: 196    # reference derivation (visual_world_model.py __init__): decoder_scale=16,
+                       # num_side_patches = image_size(224)//16 = 14, encoder_image_size =
+                       # 14 * patch_size(14) = 196 -- i.e. it resizes to 196px specifically
+                       # to force a 14x14 grid, independent of the env's raw 224px images
+n_frames: 16           # the precomputed clip length window_size=3 samples its 4-frame span
+                       # from -- see data/dataset.py; the reference has no equivalent
+                       # "n_frames" knob (it windows over the whole raw trajectory instead)
+
+# Predictor hyperparameters -- external/temporal-straightening/conf/predictor/vit.yaml,
+# used unchanged for every encoder mode in the reference.
+depth: 6
+heads: 16
+dim_head: 64
+mlp_dim: 2048
+dropout: 0.1
+emb_dropout: 0.0
+
+# Aggregation head -- conf/encoder/dino_channel.yaml: agg_type=mlp, agg_mlp_hidden_dim=512,
+# agg_out_dim=128.
+agg_mlp_hidden_dim: 512
+agg_out_dim: 128
+
+# THE variable under test in this pair of configs.
+# window_size=3 -> num_hist=3/num_pred=1, matching conf/train.yaml exactly.
+window_size: 3
+
+# Loss recipe -- README: "DINOv2(patch) + channel projector: training.straighten=aggcos1e-1"
+# (aggregated/pooled-feature curvature, which is the only variant this project's
+# straightening_loss implements -- it always operates on the aggregated z_reg, never the
+# raw per-patch tokens, so no separate "cos" vs "aggcos" switch is needed here).
+# pred_loss is always MSE (nn.MSELoss()) in the reference, no L1 option there.
+pred_loss: l2
+pred_weight: 1.0
+straighten_weight: 0.1
+# conf/train.yaml's main-experiment recipe is stop-grad ONLY for collapse prevention;
+# vcreg: False, coefficients 0 -- VICReg is explicitly optional/orthogonal there, not part
+# of the headline method. Left at 0 to match. vicreg_granularity is moot while both
+# weights are 0, but set to "token" (matching WorldModelLoss.vicreg_std_loss/
+# vicreg_cov_loss flattening the RAW (B,T,P,D) tokens, never aggregated first) in case
+# either weight is turned on later for an ablation -- see VWorldModel.vcreg_std_loss's use
+# of visual_prop(z) directly, with no aggregation step, in the reference.
+vicreg_std_weight: 0.0
+vicreg_cov_weight: 0.0
+vicreg_granularity: token
+sigreg_weight: 0.0     # no reference counterpart at all (LeJEPA import, this project only)
+chord_weight: 0.0      # no reference counterpart at all (this project only)
+stop_grad: true
+
+# Optimizer -- conf/train.yaml Table-3-style split: encoder_lr=1e-5, predictor_lr=5e-4.
+# weight_decay=0.0 matches the encoder's real optimizer (plain Adam, no decay) -- see the
+# header comment above for why this can't also match the predictor's AdamW default 0.01
+# at the same time with this project's single-weight_decay optimizer.
+encoder_lr: 1e-5
+predictor_lr: 5e-4
+weight_decay: 0.0
+grad_clip: 0.0          # reference does no gradient clipping at all
+
+# conf/train.yaml training block: batch_size=32, mixed_precision=bf16. epochs=50 (not the
+# reference's literal 20, run longer than the paper's own value at explicit request) with
+# a standalone epoch{N}.ckpt saved every 10 epochs (last.ckpt/best.ckpt are always saved
+# regardless of save_every).
+epochs: 50
+save_every: 10
+batch_size: 32
+amp: true
+num_workers: 4

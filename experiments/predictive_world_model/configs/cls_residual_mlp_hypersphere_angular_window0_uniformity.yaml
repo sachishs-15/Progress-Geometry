@@ -1,0 +1,69 @@
+# cls residual-MLP, window_size=0, HYPERSPHERE norm + Wang & Isola UNIFORMITY (ICML
+# 2020), the sphere-native anti-collapse term -- see losses/uniformity_loss.py.
+#
+# The intended combination: uniformity is defined for points on the sphere, is scale-free
+# (for unit vectors exp(-t||x-y||^2) = exp(-2t)exp(2t*cos), a function of angle alone),
+# has no d/N noise floor since it never forms a dxd covariance, and never saturates. On
+# the ideal-spread-to-total-collapse sweep where VICReg's std moves 0.948 -> 0.990, this
+# spans -3.99 -> 0.00.
+#
+# uniformity_weight: 1.0 is the scratch value that produced the only genuinely-learned
+# result measured so far (SSv2, ClsMlpEncoder: untrained 0.9294 -> trained 0.9412, versus
+# VICReg's 0.9441 -> 0.9471 where random init had already done the work). It is NOT tuned
+# for this encoder/dataset and is the first thing to sweep. Note it sat ~3x the
+# prediction loss there, so it is a dominant term, not a gentle one.
+#
+# Everything below matches the cls_residual_mlp_paper_window0* family except norm_type,
+# pred_loss, and the regularizer line this variant is named for. Its pred_loss=l2 twin
+# is cls_residual_mlp_hypersphere_window0*.yaml, so the pair isolates the loss geometry
+# with everything else held fixed.
+#
+# pred_loss: angular = 1 - cos(pred, target), the geometrically matched choice once z is
+# on the unit sphere: there the only thing two latents can differ by is their angle, so
+# an l2 penalty additionally charges for a radius gap the projection has already removed.
+# It is also scale-invariant, which l2 is not (verified in tests/test_model.py).
+
+features: /mnt/rdata7/proprogress/data/kinetics-dataset/precomputed_features/k400_train_10pct.pt
+checkpoint_dir: checkpoints/pwm_cls_residual_mlp_hypersphere_angular_window0_uniformity
+val_fraction: 0.0
+seed: 0
+
+feature_dim: 384
+latent_dim: 384
+norm_type: hypersphere
+encoder_type: residual_mlp
+encoder_depth: 2
+encoder_expansion: 4
+encoder_dropout: 0.0
+token_mode: cls
+n_frames: 16
+max_len: 16
+
+nhead: 8
+pred_num_layers: 2
+dropout: 0.1
+
+window_size: 0
+
+pred_loss: angular
+pred_weight: 1.0
+straighten_weight: 0.1
+vicreg_std_weight: 0.0
+vicreg_cov_weight: 0.0
+sigreg_weight: 0.0
+uniformity_weight: 1.0
+uniformity_t: 2.0
+uniformity_pairs: 2048
+chord_weight: 0.0
+stop_grad: true
+
+encoder_lr: 1e-5
+predictor_lr: 5e-4
+weight_decay: 0.0
+grad_clip: 0.0
+
+epochs: 50
+save_every: 10
+batch_size: 32
+amp: true
+num_workers: 4

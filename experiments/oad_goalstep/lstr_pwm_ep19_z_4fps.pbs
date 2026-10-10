@@ -1,0 +1,18 @@
+#!/bin/bash
+#PBS -N lstr_pwm_ep19z_4fps
+#PBS -l select=1:ncpus=8:mem=64gb:ngpus=1
+#PBS -l walltime=24:00:00
+#PBS -o /home/sachish/proc-planning/experiments/oad_goalstep/pbslogs/
+#PBS -e /home/sachish/proc-planning/experiments/oad_goalstep/pbslogs/
+
+for i in $(seq 1 300); do ls /mnt/rdata7 >/dev/null 2>&1 && break; sleep 2; done
+
+R=/mnt/rdata7/proprogress/data/ego4dgoal/oad_4fps
+PY=/home/sachish/lstr-venv/bin/python
+cd /home/sachish/proc-planning/experiments/oad_goalstep
+
+$PY run_lstr.py train --config_file configs/lstr_goalstep_pwm_ep19_z_4fps.yaml --gpu 0 \
+  DATA.DATA_INFO $R/data_info.json SESSION full
+$PY run_lstr.py test --config_file configs/lstr_goalstep_pwm_ep19_z_4fps.yaml --gpu 0 \
+  DATA.DATA_INFO $R/data_info.json SESSION full \
+  MODEL.CHECKPOINT checkpoints/lstr_goalstep_pwm_ep19_z_4fps/full/epoch-4.pth

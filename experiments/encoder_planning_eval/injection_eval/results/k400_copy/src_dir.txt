@@ -1,0 +1,1 @@
+/rhome/sachish/datasets/kinetics-dataset/k400/train

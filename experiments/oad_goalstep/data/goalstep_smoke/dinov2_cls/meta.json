@@ -1,0 +1,11 @@
+{
+ "model": "dinov2 (facebook/dinov2-with-registers-small)",
+ "pooling": "cls",
+ "stride_frames": 16,
+ "source_fps": 30.0,
+ "feature_fps": 1.875,
+ "dtype": "float16",
+ "dim": 384,
+ "preprocessing": "HF processor default",
+ "layout": "<video_uid>.npy, (L, 384), feature k at frame k * stride_frames"
+}

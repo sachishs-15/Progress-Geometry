@@ -1,0 +1,61 @@
+# VIP (ICLR 2023, arXiv:2210.00030): the action-free goal-conditioned value objective
+# whose optimum makes -||phi(o) - phi(g)|| an optimal value function.
+#
+# "Distance to the goal decreases monotonically" is strictly stronger than "frames are
+# ordered" -- it fixes the metric structure along the trajectory, which is exactly what
+# ../encoder_planning_eval/interpolation_planning/ tests. Expect this row's
+# progress-metric and planning-metric results to disagree more than any other's; that
+# disagreement is the interesting part.
+#
+# The second term is a log-mean-exp over the batch, so VIP is the one objective here
+# whose loss genuinely couples clips together and whose batch_size is not a free knob.
+# WATCH FOR COLLAPSE. VIP's first term pulls every frame toward the goal, and only the
+# log-mean-exp term pushes back. In the one-epoch smoke run its start_end_displacement
+# fell to 0.13 and adjacent_cosine_distance to 0.003 -- i.e. the trajectory contracting
+# toward a point, which scores well on smoothness metrics while being worthless. Watch
+# z_norm / ord_start_end_displacement in train_log.csv; if it does collapse, the fix is
+# an anti-collapse term, which composes with any objective here:
+#   aux_weights: {vicreg_std: 1.0, vicreg_cov: 0.04}
+objective: vip
+objective_kwargs:
+  gamma: 0.98
+  num_samples: 2
+checkpoint_dir: checkpoints/vip_g098
+
+# ---- Data: SSv2, DINOv2 ViT-S/14 CLS features, 16 frames evenly spread per video ----
+features: /mnt/rdata7/proprogress/data/SSv2/precomputed_features/dinov2/ssv2_train.pt
+val_features: /mnt/rdata7/proprogress/data/SSv2/precomputed_features/dinov2/ssv2_validation.pt
+train_manifest: /home/sachish/proc-planning/data/chirality_in_action/SSv2/ssv2_train.csv
+val_manifest: /home/sachish/proc-planning/data/chirality_in_action/SSv2/ssv2_validation.csv
+
+# ---- Held IDENTICAL across every objective in this project. Changing any of these in
+# ---- one config and not the others invalidates the comparison -- that is the whole
+# ---- point of the folder (see README.md).
+feature_dim: 384
+latent_dim: 384
+hidden_dim: 384
+use_projector: true
+norm_type: clip_rmsnorm   # one RMS scale per clip: the only norm option that cannot
+                          # distort within-clip straightness, which several objectives
+                          # here would otherwise be measured through. See
+                          # ../predictive_world_model/models/norms.py.
+n_frames: 16
+epochs: 100
+batch_size: 128
+lr: 0.0001
+head_lr: 0.0005           # the objective's head starts from scratch; the encoder starts
+                          # from frozen DINOv2 and only needs a correction.
+weight_decay: 0.00001
+grad_clip: 1.0
+num_workers: 4
+seed: 0
+
+# ---- Checkpoint selection: on held-out ordinality, not on the loss (not comparable
+# ---- across objectives). Same clip_progress_metrics the final table uses.
+eval_every: 5
+eval_clips: 512
+monitor_source: train     # NOT val: make_eval_spec.py scores the final table on
+                          # ssv2_validation, so selecting best.ckpt there would pick every
+                          # row by peeking at its own reported metric.
+monitor_metric: time_progress_spearman
+monitor_mode: max

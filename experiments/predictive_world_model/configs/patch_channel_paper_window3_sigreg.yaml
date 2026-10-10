@@ -1,0 +1,74 @@
+# Ablation on top of patch_channel_paper_window3.yaml (see that file for the full
+# reference-mirroring rationale/header) -- SAME paper-mirroring baseline (straighten_weight
+# 0.1, stop_grad, encoder_lr/predictor_lr split, etc.), with SIGReg turned ON as a separate
+# ablation from VICReg (see patch_channel_paper_window3_vicreg.yaml). SIGReg has NO
+# counterpart in the temporal-straightening reference at all -- it's a straight import
+# from a separate paper (LeJEPA, arXiv:2511.08544), an alternative to VICReg's std/cov
+# terms, not something this config is "mirroring" from anywhere.
+#
+# sigreg_weight: 0.1 -- matches checkpoints/pwm_patch_channel_k400_10pct_sigreg0.1/
+# config.yaml exactly (window_size=3, batch_size=4, sigreg_weight=0.1), the one prior run
+# in this repo that actually started training successfully with SIGReg at window_size=3.
+# (There's also a pwm_patch_channel_k400_10pct_sigreg1.0 directory, but it never actually
+# trained -- its train.log shows an unrelated FileNotFoundError on the /mnt/rdata7 mount
+# at startup, before any config.yaml was written, so 1.0 has no track record either way
+# here, good or bad. 0.1 is the value with actual evidence behind it.)
+#
+# batch_size: 32 -- kept at the paper-mirror baseline's value by explicit request, NOT
+# the batch_size=4 that checkpoints/pwm_patch_channel_k400_10pct_sigreg0.1/config.yaml
+# actually used for this exact window_size=3+sigreg_weight=0.1 combination. If this
+# OOMs, that prior run's batch_size=4 is the known-working fallback.
+
+features: /mnt/rdata7/proprogress/data/kinetics-dataset/precomputed_features/dinov2_noreg/k400_train_10pct.pt
+checkpoint_dir: checkpoints/pwm_patch_channel_paper_window3_sigreg
+val_fraction: 0.0
+seed: 0
+
+feature_dim: 384
+latent_dim: 384        # unused by projector_type=channel -- actual dim is channel_out_dim
+channel_out_dim: 8
+channel_hidden: 192
+num_patches: 196
+token_mode: patch
+projector_type: channel
+patch_hub_id: dinov2_vits14
+patch_img_size: 196    # reference derivation (visual_world_model.py __init__): decoder_scale=16,
+                       # num_side_patches = image_size(224)//16 = 14, encoder_image_size =
+                       # 14 * patch_size(14) = 196 -- i.e. it resizes to 196px specifically
+                       # to force a 14x14 grid, independent of the env's raw 224px images
+n_frames: 16
+
+depth: 6
+heads: 16
+dim_head: 64
+mlp_dim: 2048
+dropout: 0.1
+emb_dropout: 0.0
+
+agg_mlp_hidden_dim: 512
+agg_out_dim: 128
+
+window_size: 3          # unchanged from the paper-mirror baseline -- the variable under
+                        # test here is the added regularizer, not window_size
+
+pred_loss: l2
+pred_weight: 1.0
+straighten_weight: 0.1
+vicreg_std_weight: 0.0
+vicreg_cov_weight: 0.0
+vicreg_granularity: token
+sigreg_weight: 0.1
+sigreg_num_slices: 1024
+chord_weight: 0.0
+stop_grad: true
+
+encoder_lr: 1e-5
+predictor_lr: 5e-4
+weight_decay: 0.0
+grad_clip: 0.0
+
+epochs: 50
+save_every: 10
+batch_size: 32
+amp: true
+num_workers: 4

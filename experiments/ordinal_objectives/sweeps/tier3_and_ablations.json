@@ -1,0 +1,17 @@
+{
+  "defaults": { "epochs": 100 },
+  "runs": [
+    {"config": "configs/progressor.yaml"},
+    {"config": "configs/progressor_meanonly.yaml"},
+    {"config": "configs/progressor_crop.yaml"},
+    {"config": "configs/soft_dtw.yaml"},
+    {"config": "configs/ordinal_entropy.yaml"},
+
+    {"name": "shuffle_sort_k8_tinyhead", "config": "configs/shuffle_sort.yaml",
+     "objective_kwargs": {"variant": "sort", "num_frames": 8, "d_model": 32, "num_layers": 1}},
+    {"name": "arrow_of_time_tinyhead", "config": "configs/arrow_of_time.yaml",
+     "objective_kwargs": {"d_model": 32, "num_layers": 1}},
+    {"name": "pace_r1234_tinyhead", "config": "configs/pace.yaml",
+     "objective_kwargs": {"num_frames": 4, "rates": [1, 2, 3, 4], "d_model": 32, "num_layers": 1}}
+  ]
+}

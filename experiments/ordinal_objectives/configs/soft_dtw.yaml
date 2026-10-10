@@ -1,0 +1,67 @@
+# LAV: Learning by Aligning Videos in Time (CVPR 2021, arXiv:2103.17260) -- soft-DTW
+# alignment to a same-activity clip, plus Contrastive-IDM to stop it collapsing.
+#
+# The third member of the alignment family after TCC and SCL, and the only one whose
+# alignment path is monotone BY CONSTRUCTION. TCC's cycle and SCL's Gaussian prior are
+# both pairwise and can be satisfied by a space that is only locally ordered; soft-DTW's
+# cost is minimised over monotone warping paths, so a low value requires global
+# consistency. If the alignment family wins at all, this is where the effect should be
+# largest.
+#
+# gamma and idm_margin live in the same units as the distance matrix and are only
+# meaningful because normalize=true (default) bounds it to [0, 4] -- same scale problem,
+# same fix, as objectives/tcc.py.
+objective: soft_dtw
+pair_col: verb
+objective_kwargs:
+  gamma: 0.1
+  idm_weight: 0.2    # NOT 1.0 -- IDM's (i-j)^2 weighting makes it ~5x the DTW term
+                     # it regularizes at this clip length; see objectives/soft_dtw.py
+  idm_sigma: 2.0
+  idm_margin: 2.0
+  view: pair
+checkpoint_dir: checkpoints/soft_dtw_lav
+
+# ---- Data: SSv2, DINOv2 ViT-S/14 CLS features, 16 frames evenly spread per video ----
+features: /mnt/rdata7/proprogress/data/SSv2/precomputed_features/dinov2/ssv2_train.pt
+val_features: /mnt/rdata7/proprogress/data/SSv2/precomputed_features/dinov2/ssv2_validation.pt
+train_manifest: /home/sachish/proc-planning/data/chirality_in_action/SSv2/ssv2_train.csv
+val_manifest: /home/sachish/proc-planning/data/chirality_in_action/SSv2/ssv2_validation.csv
+
+# ---- Held IDENTICAL across every objective in this project. Changing any of these in
+# ---- one config and not the others invalidates the comparison -- that is the whole
+# ---- point of the folder (see README.md).
+feature_dim: 384
+latent_dim: 384
+hidden_dim: 384
+use_projector: true
+norm_type: clip_rmsnorm   # one RMS scale per clip: the only norm option that cannot
+                          # distort within-clip straightness, which several objectives
+                          # here would otherwise be measured through. See
+                          # ../predictive_world_model/models/norms.py.
+n_frames: 16
+epochs: 100
+batch_size: 128
+lr: 0.0001
+head_lr: 0.0005           # the objective's head starts from scratch; the encoder starts
+                          # from frozen DINOv2 and only needs a correction.
+weight_decay: 0.00001
+grad_clip: 1.0
+num_workers: 4
+seed: 0
+
+# ---- Checkpoint selection: on held-out ordinality, not on the loss (not comparable
+# ---- across objectives). Same clip_progress_metrics the final table uses.
+eval_every: 5
+eval_clips: 512
+monitor_source: train     # NOT val: make_eval_spec.py scores the final table on
+                          # ssv2_validation, so selecting best.ckpt there would pick every
+                          # row by peeking at its own reported metric.
+monitor_metric: time_progress_spearman
+monitor_mode: max
+
+# ---- Deliberate deviation from the shared block above (restated AFTER it; a duplicate
+# ---- YAML key earlier in the file would be silently overridden) ----
+# Paired clips double the encoder pass, and soft-DTW's DP is 16x16 sequential steps that
+# cannot be parallelised across (i, j). Same halving as tcc.yaml, same reason.
+batch_size: 64

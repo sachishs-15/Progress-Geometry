@@ -1,0 +1,156 @@
+\subsection{Sparse Temporal Sampling: 16 vs.\ 8 vs.\ 4 Frames (Frozen DINOv2, SSv2)}
+\label{exp:sparse-temporal-sampling}
+
+\paragraph{What we tried} Scored plain frozen DINOv2 ViT-S/14 CLS features on SSv2
+validation at three evenly-sampled frame counts ($T=16$, 8, 4) --- no training, no
+regularizer, just subsampling the same clips more sparsely --- to check whether the
+metrics used throughout this log are comparable across different $T$, since most prior
+entries fix $T=16$. Scored with the same full metric suite from
+Section~\ref{sec:methodology} (Main and Additional).
+
+\paragraph{Result}
+
+\begin{table}[H]
+\centering
+\caption{Main metrics, frozen DINOv2 CLS, SSv2, at three sampling densities.}
+\label{tab:sparse-sampling-main}
+\begin{tabular}{lccc}
+\toprule
+Metric & 16-frame & 8-frame & 4-frame \\
+\midrule
+\multicolumn{4}{l}{\textit{Whole-dataset collapse and spread}} \\
+effective\_rank\_fraction & 0.8120 & 0.8116 & 0.8105 \\
+$W$ (within-clip mean pairwise L2) & 15.3090 & 15.8230 & 16.6857 \\
+$B$ (across-clip mean pairwise L2) & 31.1109 & 31.0909 & 31.0612 \\
+$B-W$ (gap) & 15.8019 & 15.2679 & 14.3755 \\
+\midrule
+\multicolumn{4}{l}{\textit{Trajectory geometry}} \\
+trajectory\_straightness ($z$) & 0.1348 & \good{0.2277}\textsuperscript{d} & \good{0.4241}\textsuperscript{d} \\
+mean\_velocity\_cosine ($z$) & -0.2636 & \bad{-0.2764} & \bad{-0.3106} \\
+start\_end\_displacement ($z$) & 0.8001 & 0.7948 & 0.7981 \\
+direction\_reversal\_fraction ($x$) & 0.8941 & \bad{0.9093} & \bad{0.9322} \\
+\midrule
+\multicolumn{4}{l}{\textit{Temporal order}} \\
+time\_progress\_spearman ($z$) & 0.9040 & \good{0.9247}\textsuperscript{d} & \good{0.9699}\textsuperscript{d} \\
+distance\_to\_goal\_spearman ($x$) & 0.6110 & \bad{0.5808} & \bad{0.5143} \\
+adjacent\_temporal\_nn\_fraction ($z$) & 0.7873 & 0.8014 & 0.7984 \\
+\midrule
+\multicolumn{4}{l}{\textit{Cross-clip temporal consistency}} \\
+tcc\_kendall\_tau (mean) & 0.0661 & 0.0762 & 0.1258 \\
+\midrule
+\multicolumn{4}{l}{\textit{Semantic information}} \\
+chirality.mean\_accuracy ($x$) & 0.7993 & 0.7784 & \bad{0.7455} \\
+content.knn.balanced\_acc & 0.2050 & 0.2063 & 0.2044 \\
+content.linear.balanced\_acc & 0.2521 & 0.2436 & 0.2560 \\
+change.knn.balanced\_acc & 0.3110 & 0.3048 & 0.0455\textsuperscript{a} \\
+change.linear.balanced\_acc & 0.3681 & 0.3588 & 0.0455\textsuperscript{a} \\
+content+change.knn.balanced\_acc & 0.3434 & 0.3400 & 0.2044 \\
+content+change.linear.balanced\_acc & 0.5242 & 0.4912 & 0.2569 \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.3em}
+{\footnotesize \textsuperscript{a}\texttt{change} is defined as mean(last \texttt{edge\_frames})
+$-$ mean(first \texttt{edge\_frames}), default \texttt{edge\_frames=4}. At $T=4$ the two
+windows are identical (all 4 frames), so \texttt{change}$\equiv 0$ for every clip and
+both probes collapse exactly to \texttt{chance.uniform} (1/22). Not evidence about the
+encoder --- a mechanical consequence of the default edge width meeting $T=4$ --- and a
+reason \texttt{--edge-frames} would need to shrink for any future $T<8$ comparison
+involving the \texttt{change} vector specifically. \quad
+\textsuperscript{d}Green here is \underline{not} a real improvement --- see Inference
+below: fewer waypoints mechanically inflates both the path-length/net-displacement ratio
+(\texttt{trajectory\_straightness} and relatives) and Spearman's rank correlation
+(\texttt{time\_progress\_spearman}, fewer points $=$ fewer possible rank orderings to get
+wrong), independent of trajectory quality. Do not read these cells the way \good{green}
+is read everywhere else in this document.}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Additional metrics, frozen DINOv2 CLS, SSv2 --- same three sampling densities as
+Table~\ref{tab:sparse-sampling-main}.}
+\label{tab:sparse-sampling-additional}
+\begin{tabular}{lccc}
+\toprule
+Metric & 16-frame & 8-frame & 4-frame \\
+\midrule
+\multicolumn{4}{l}{\textit{Trajectory geometry and raw variants}} \\
+mean\_chord\_alignment ($z$) & 0.1146 & \good{0.1998}\textsuperscript{d} & \good{0.3881}\textsuperscript{d} \\
+trajectory\_straightness\_raw ($x$) & 0.1358 & \good{0.2290}\textsuperscript{d} & \good{0.4260}\textsuperscript{d} \\
+mean\_velocity\_cosine\_raw ($x$) & -0.2627 & \bad{-0.2750} & \bad{-0.3077} \\
+mean\_chord\_alignment\_raw ($x$) & 0.1154 & \good{0.2010}\textsuperscript{d} & \good{0.3900}\textsuperscript{d} \\
+\midrule
+\multicolumn{4}{l}{\textit{Raw embedding magnitude}} \\
+norm\_growth ($x$) & 0.9933 & 0.9952 & 0.9977 \\
+norm\_std\_within\_clip ($x$) & 0.5421 & 0.5319 & 0.4978 \\
+mean\_norm ($x$) & 23.653 & 23.645 & 23.631 \\
+\midrule
+\multicolumn{4}{l}{\textit{Change-direction consistency}} \\
+change\_direction.gap & 0.0386 & 0.0338 & 0.0000\textsuperscript{a} \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.3em}
+{\footnotesize \textsuperscript{a}see Table~\ref{tab:sparse-sampling-main}'s footnote.
+\quad \textsuperscript{d}same caveat as Table~\ref{tab:sparse-sampling-main}: mechanical
+inflation from fewer waypoints, not a real straightness improvement.}
+\end{table}
+
+\paragraph{Inference}
+
+\textbf{This closes the log with a methodology check rather than another checkpoint:
+every comparison in every experiment above fixes $T=16$, so before trusting any of those
+comparisons, it's worth confirming the metrics themselves don't silently depend on frame
+count.} They do, for some of them --- which is exactly why this entry comes last: it's a
+caveat on how to read everything before it, not a finding that stands on its own the way
+the checkpoints above do.
+
+\textbf{\texttt{trajectory\_straightness} (and its raw/chord-alignment relatives) AND
+\texttt{time\_progress\_spearman} are \emph{not} invariant to frame count --- both are
+green for 8-/4-frame in the table above, and both are explicitly flagged rather than
+trusted.} Comparing either across different $T$ is comparing metric resolution, not real
+trajectory quality: straightness rises from 0.1348 ($T{=}16$) to 0.2277 ($T{=}8$) to
+0.4241 ($T{=}4$), and \texttt{time\_progress\_spearman} rises the same way (0.9040 $\to$
+0.9247 $\to$ 0.9699), on the \emph{exact same encoder and clips} --- nothing trained or
+changed except sampling density. Fewer waypoints mechanically gives less opportunity for
+the path-length/net-displacement ratio to register zig-zag, and fewer points give
+Spearman fewer possible rank orderings to get wrong. \texttt{trajectory\_straightness} is
+the same quantity that turned green for every collapsed checkpoint earlier in this log
+(Section~\ref{exp:window-vicreg-ablation}, Section~\ref{exp:regularizer-comparison-k400}'s
+\texttt{noreg}) --- there the cause was collapse; here, on a completely healthy encoder,
+the identical metric inflates for a totally different, purely mechanical reason. Two
+different failure modes produce the same-looking green cell, which is the strongest
+reason not to trust \texttt{trajectory\_straightness} --- or, per this experiment,
+\texttt{time\_progress\_spearman} --- alone anywhere in this document.
+
+\textbf{\texttt{distance\_to\_goal\_spearman} moves the \emph{opposite} direction under
+sparser sampling, and is red rather than green --- it argues for being the metric to
+trust here, not the one to discount.} It falls as $T$ drops (0.6110 $\to$ 0.5808, red
+$\to$ 0.5143, red), and \texttt{chirality.mean\_accuracy} falls too (0.7993 $\to$ 0.7784,
+uncolored $\to$ 0.7455, red) --- both getting worse with sparser sampling, the opposite
+trend from the two green-but-flagged metrics above. This makes sense for genuine reasons:
+distance-to-goal needs enough intermediate points to show a smooth monotonic approach,
+and telling forward from reverse needs enough temporal resolution to detect the
+direction of change. Both are plausibly measuring real information loss as frames get
+sparser, unlike the mechanical inflation above --- so of the two "temporal order"
+metrics used throughout this log, \texttt{distance\_to\_goal\_spearman} is the one that
+behaves like a genuine quality signal under $T$, and \texttt{time\_progress\_spearman} is
+the one that doesn't.
+
+\textbf{\texttt{start\_end\_displacement} and the content probes are correctly invariant,
+which is a useful sanity check on the pipeline itself.} \texttt{start\_end\_displacement}
+only depends on the first and last frame, so it stays flat (0.8001/0.7948/0.7981)
+regardless of intermediate sampling, as it should. \texttt{content.knn.balanced\_acc} and
+\texttt{content.linear.balanced\_acc} are similarly flat (0.2044--0.2063 /
+0.2436--0.2560) --- semantic content is a property of the frames themselves, not of how
+many are used to build the trajectory, and this confirms the metric pipeline reflects
+that correctly rather than leaking a $T$-dependence it shouldn't have.
+
+\textbf{Practical implication for reading the rest of this log.} Every
+\texttt{trajectory\_straightness}-family and \texttt{time\_progress\_spearman} number
+elsewhere in this document is implicitly compared only against other $T{=}16$ runs,
+which every other entry in this log is. If a future experiment needs a different frame
+count, those numbers are not directly comparable to this log's existing tables without
+accounting for $T$ --- \texttt{distance\_to\_goal\_spearman}, \texttt{chirality.mean\_accuracy},
+and the content probes would be the safer metrics to lean on for any such cross-$T$
+comparison.

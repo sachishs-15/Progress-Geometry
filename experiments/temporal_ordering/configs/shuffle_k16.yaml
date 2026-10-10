@@ -1,0 +1,33 @@
+# Model C — shuffle-trained representation: encoder + small Transformer trained to
+# recover the original order of K=8 shuffled timesteps.
+experiment_name: shuffle_k16
+
+dataset:
+  cache_dir: data_cache/synthetic
+  progress_type: timestamp
+
+split: {train: 0.7, val: 0.15, test: 0.15, seed: 42}
+splits_dir: splits
+seed: 42
+train_frac: 1.0
+
+representation:
+  objective: shuffle
+  latent_dim: 512
+  k: 16
+  num_layers: 2
+  num_heads: 8
+  lr: 0.001
+  epochs: 30
+  batch_size: 16
+  steps_per_epoch: 50
+  shuffle_strength: strong
+
+# Identical probe architecture/optimizer/epochs/batch size to baseline.yaml/timestamp.yaml —
+# only the representation-learning objective differs.
+probe:
+  representation: encoder
+  lr: 0.001
+  epochs: 50
+  batch_size: 64
+  weight_decay: 0.0

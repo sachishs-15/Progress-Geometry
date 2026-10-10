@@ -1,0 +1,49 @@
+\section{Problem Statement}
+\label{sec:problem-statement}
+
+Given a pretrained, frozen visual encoder applied to the frames of a procedural video
+clip, does the resulting latent trajectory $z_1, \dots, z_T$ already support two
+things: (i) recovering \emph{how far the clip has progressed} through the task
+(temporal ordinality), and (ii) recovering \emph{unseen intermediate states} given only
+a start frame $z_1$ and a goal frame $z_T$ (planning by interpolation) --- without ever
+training on ground-truth actions? And, separately, can a self-supervised training
+objective induce this structure in an encoder that does not already have it, in a way
+that transfers to held-out data rather than only fitting the training clips?
+
+
+\subsection{Motivation}
+Long-horizon procedural video understanding needs a notion of \emph{progress} --- where
+along a task a clip currently is --- and the ability to reason about intermediate states
+between a start and a goal, without access to ground-truth actions. Foundation visual
+encoders (DINOv2, DINOv3, V-JEPA2, \ldots) are usually evaluated on semantic tasks
+(classification, retrieval), not on whether their latent trajectories are temporally
+ordered or ``straight'' enough to support interpolation-based planning. Meanwhile, many
+self-supervised objectives claim to induce temporally-ordered, progress-aware
+representations (progress regression, ordinal classification, pairwise ranking,
+temporal contrastive losses, goal-conditioned value learning, \ldots), but these claims
+are rarely tested against a common, encoder-agnostic evaluation protocol -- so it is
+hard to tell whether a reported gain reflects the objective, the encoder, the metric, or
+representation collapse.
+
+\subsection{Goals}
+\begin{itemize}
+    \item Define scale-invariant, comparable ordinality and planning metrics that work
+    across encoders with very different raw latent scales (progress-metrics:
+    time-progress Spearman, straightness; interpolation planning: cosine similarity,
+    relative $L_2$, $R^2$).
+    \item Benchmark existing frozen encoders (DINOv2 variants, DINOv3, V-JEPA2 / 2.1) on
+    these metrics with nothing trained, to see which latent spaces already support
+    planning ``for free.''
+    \item Train and score a wide set of candidate self-supervised objectives (absolute
+    progress regression and its ordinal variants, pairwise/rank-based losses, temporal
+    contrastive and alignment losses, goal-conditioned value learning) under one
+    held-fixed encoder / optimizer / data recipe, so that any difference in the result is
+    attributable to the objective alone.
+    \item Build a predictive world model (encoder + predictor trained end-to-end on
+    next-latent prediction, with optional curvature / VICReg regularization) as a
+    complementary approach that does train the encoder itself on procedural video, rather
+    than only probing a frozen one.
+    \item Determine whether latent-space ``straightness'' is necessary and/or sufficient
+    for planning, and whether apparent gains on ordinality metrics are confounded with
+    representation collapse.
+\end{itemize}

@@ -1,0 +1,65 @@
+# Temporal Cycle-Consistency (CVPR 2019, arXiv:1904.07846), cycle-back regression.
+#
+# Uses no progress label at all: supervision is that a frame's soft nearest neighbour in
+# another video of the same activity must map back to itself. Needs paired clips, drawn
+# here from SSv2's `verb` column (--pair-col below), so clips whose verb has only one
+# member in the split are dropped rather than self-paired.
+#
+# batch_size is halved relative to the rest: TCC materialises (B, T, T) distance
+# matrices for four cycles per step, and the pair doubles the encoder's forward pass.
+# This is the one place a shared hyperparameter is deliberately not shared -- noted here
+# so it is not mistaken for an oversight.
+objective: tcc
+pair_col: verb
+objective_kwargs:
+  variant: regression
+  temperature: 0.1   # meaningful only because normalize=True bounds squared
+                     # distances to [0, 4]; see objectives/tcc.py's docstring
+  variance_lambda: 0.001
+  view: pair
+checkpoint_dir: checkpoints/tcc_regression_pair
+
+# ---- Data: SSv2, DINOv2 ViT-S/14 CLS features, 16 frames evenly spread per video ----
+features: /mnt/rdata7/proprogress/data/SSv2/precomputed_features/dinov2/ssv2_train.pt
+val_features: /mnt/rdata7/proprogress/data/SSv2/precomputed_features/dinov2/ssv2_validation.pt
+train_manifest: /home/sachish/proc-planning/data/chirality_in_action/SSv2/ssv2_train.csv
+val_manifest: /home/sachish/proc-planning/data/chirality_in_action/SSv2/ssv2_validation.csv
+
+# ---- Held IDENTICAL across every objective in this project. Changing any of these in
+# ---- one config and not the others invalidates the comparison -- that is the whole
+# ---- point of the folder (see README.md).
+feature_dim: 384
+latent_dim: 384
+hidden_dim: 384
+use_projector: true
+norm_type: clip_rmsnorm   # one RMS scale per clip: the only norm option that cannot
+                          # distort within-clip straightness, which several objectives
+                          # here would otherwise be measured through. See
+                          # ../predictive_world_model/models/norms.py.
+n_frames: 16
+epochs: 100
+batch_size: 128
+lr: 0.0001
+head_lr: 0.0005           # the objective's head starts from scratch; the encoder starts
+                          # from frozen DINOv2 and only needs a correction.
+weight_decay: 0.00001
+grad_clip: 1.0
+num_workers: 4
+seed: 0
+
+# ---- Checkpoint selection: on held-out ordinality, not on the loss (not comparable
+# ---- across objectives). Same clip_progress_metrics the final table uses.
+eval_every: 5
+eval_clips: 512
+monitor_source: train     # NOT val: make_eval_spec.py scores the final table on
+                          # ssv2_validation, so selecting best.ckpt there would pick every
+                          # row by peeking at its own reported metric.
+monitor_metric: time_progress_spearman
+monitor_mode: max
+
+# ---- Deliberate deviation from the shared block above (a duplicate YAML key would be
+# ---- silently overridden by it, so it is re-stated here, after it, on purpose) ----
+# TCC materialises (B, T, T) distance matrices for four cycles per step and the pair
+# doubles the encoder's forward pass. This is the ONE shared hyperparameter this project
+# does not hold fixed; noted so it is never mistaken for an oversight.
+batch_size: 64

@@ -1,0 +1,30 @@
+{
+  "defaults": {
+    "epochs": 60
+  },
+  "runs": [
+    {"name": "rnc_t0.5", "config": "configs/rank_n_contrast.yaml", "objective_kwargs": {"temperature": 0.5}},
+    {"name": "rnc_t2",   "config": "configs/rank_n_contrast.yaml", "objective_kwargs": {"temperature": 2.0}},
+    {"name": "rnc_t8",   "config": "configs/rank_n_contrast.yaml", "objective_kwargs": {"temperature": 8.0}},
+    {"name": "rnc_cosine", "config": "configs/rank_n_contrast.yaml", "objective_kwargs": {"temperature": 2.0, "sim": "cosine"}},
+    {"name": "rnc_projected", "config": "configs/rank_n_contrast.yaml", "objective_kwargs": {"temperature": 2.0, "project": true}},
+
+    {"name": "scl_sigma0.5", "config": "configs/scl.yaml", "objective_kwargs": {"sigma": 0.5, "temperature": 0.1}},
+    {"name": "scl_sigma2",   "config": "configs/scl.yaml", "objective_kwargs": {"sigma": 2.0, "temperature": 0.1}},
+    {"name": "scl_sigma4",   "config": "configs/scl.yaml", "objective_kwargs": {"sigma": 4.0, "temperature": 0.1}},
+
+    {"name": "rank_gap1", "config": "configs/pairwise_rank.yaml", "objective_kwargs": {"min_gap": 1}},
+    {"name": "rank_gap4", "config": "configs/pairwise_rank.yaml", "objective_kwargs": {"min_gap": 4}},
+    {"name": "rank_margin", "config": "configs/pairwise_rank.yaml", "objective_kwargs": {"mode": "margin", "min_gap": 2}},
+
+    {"name": "sort_k4",  "config": "configs/shuffle_sort.yaml", "objective_kwargs": {"variant": "sort", "num_frames": 4}},
+    {"name": "sort_k16", "config": "configs/shuffle_sort.yaml", "objective_kwargs": {"variant": "sort", "num_frames": 16}},
+
+    {"name": "progress_linear_head", "config": "configs/progress_regression.yaml", "objective_kwargs": {"loss": "l2", "depth": 1}},
+    {"name": "progress_l1", "config": "configs/progress_regression.yaml", "objective_kwargs": {"loss": "l1"}},
+
+    {"name": "tcn_w2_m6", "config": "configs/tcn.yaml", "objective_kwargs": {"pos_window": 2, "neg_margin": 6}},
+    {"name": "vip_g090", "config": "configs/vip.yaml", "objective_kwargs": {"gamma": 0.90, "num_samples": 2}},
+    {"name": "tcc_t0.1", "config": "configs/tcc.yaml", "objective_kwargs": {"temperature": 0.1, "view": "pair"}}
+  ]
+}

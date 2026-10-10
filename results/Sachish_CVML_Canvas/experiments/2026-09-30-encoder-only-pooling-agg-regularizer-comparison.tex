@@ -1,0 +1,274 @@
+\subsection{Encoder-Only Output, Fixed Pooling (Agg-Granularity Regularizer Comparison)}
+\label{exp:encoder-only-pooling-agg}
+
+\paragraph{What we tried} Section~\ref{exp:regularizer-comparison-k400} fixed the
+window/VICReg ablation's collapse by moving the regularizer onto $z_{\mathrm{agg}}$
+instead of the raw per-patch tensor, and Section~\ref{exp:encoder-only-pooling} then
+asked, for the \emph{un-fixed} token-granularity checkpoints, whether the encoder's own
+raw output was ever actually collapsed or whether the (under-regularized) aggregation
+head was doing the damage. This experiment asks the same question of the
+\emph{already-fixed} agg-granularity checkpoints: \texttt{noreg},
+\texttt{sigreg0.1}, and \texttt{sw0.1 (vicreg)} from
+Section~\ref{exp:regularizer-comparison-k400}
+(\texttt{pwm\_patch\_channel\_k400\_10pct\_noreg\_window0\_batch16\_1},
+\texttt{..\_sigreg0.1\_window0\_batch16}, \texttt{..\_vicreg\_window0\_batch16\_1}, each
+at its own best epoch --- 115, 113, 113). $z = \texttt{model.encoder}(x)$ was pooled with
+the same fixed, untrained \texttt{mean}/\texttt{max}/\texttt{concat} reductions used in
+Section~\ref{exp:encoder-only-pooling}, bypassing \texttt{model.aggregate}(z) --- the
+trained AggregationHead these checkpoints' own regularizer was actually pointed at,
+unlike the token-granularity family. Computed fully in memory, no intermediate feature
+file written to disk. Scored with the same full metric suite from
+Section~\ref{sec:methodology} (Main and Additional).
+
+\paragraph{Result}
+
+\begin{table}[H]
+\centering
+\caption{Main metrics, \texttt{mean} pooling of the raw encoder output, agg-granularity
+regularizer family.}
+\label{tab:encoder-pooling-agg-mean-main}
+\begin{tabular}{lccc}
+\toprule
+Metric & noreg & sigreg0.1 & vicreg \\
+\midrule
+\multicolumn{4}{l}{\textit{Whole-dataset collapse and spread}} \\
+effective\_rank\_fraction & \good{0.8176} & 0.7894 & 0.7534 \\
+\midrule
+\multicolumn{4}{l}{\textit{Trajectory geometry}} \\
+trajectory\_straightness ($z$) & \good{0.1552} & \good{0.1459} & \good{0.1476} \\
+mean\_velocity\_cosine ($z$) & \good{-0.2036} & \good{-0.1995} & \good{-0.2046} \\
+start\_end\_displacement ($z$) & 0.1300 & 0.5887 & 0.4940 \\
+direction\_reversal\_fraction ($x$) & \good{0.6810} & \good{0.6535} & \good{0.6607} \\
+\midrule
+\multicolumn{4}{l}{\textit{Temporal order}} \\
+time\_progress\_spearman ($z$) & \bad{0.7193} & \bad{0.6729} & \bad{0.6780} \\
+distance\_to\_goal\_spearman ($x$) & \bad{0.5246} & \bad{0.4732} & \bad{0.4686} \\
+adjacent\_temporal\_nn\_fraction ($z$) & 0.5819 & 0.5594 & 0.5463 \\
+\midrule
+\multicolumn{4}{l}{\textit{Cross-clip temporal consistency}} \\
+tcc\_kendall\_tau (mean) & 0.1314 & 0.0650 & 0.0718 \\
+\midrule
+\multicolumn{4}{l}{\textit{Semantic information}} \\
+chirality.mean\_accuracy ($x$) & \bad{0.6942} & \bad{0.6343} & \bad{0.6333} \\
+content.knn.balanced\_acc & 0.0991 & 0.0801 & 0.1009 \\
+content.linear.balanced\_acc & 0.0925 & 0.0746 & 0.0981 \\
+change.knn.balanced\_acc & 0.1180 & 0.0807 & 0.0633 \\
+change.linear.balanced\_acc & 0.1403 & 0.1189 & 0.1036 \\
+content+change.knn.balanced\_acc & 0.1423 & 0.1031 & 0.1144 \\
+content+change.linear.balanced\_acc & 0.1566 & 0.1274 & 0.1222 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Additional metrics, \texttt{mean} pooling --- same three checkpoints as
+Table~\ref{tab:encoder-pooling-agg-mean-main}.}
+\label{tab:encoder-pooling-agg-mean-additional}
+\begin{tabular}{lccc}
+\toprule
+Metric & noreg & sigreg0.1 & vicreg \\
+\midrule
+\multicolumn{4}{l}{\textit{Trajectory geometry and raw variants}} \\
+mean\_chord\_alignment ($z$) & 0.1205 & 0.1105 & 0.1127 \\
+trajectory\_straightness\_raw ($x$) & 0.1579 & 0.1547 & 0.1523 \\
+mean\_velocity\_cosine\_raw ($x$) & -0.2003 & -0.1873 & -0.1991 \\
+mean\_chord\_alignment\_raw ($x$) & 0.1227 & 0.1188 & 0.1162 \\
+\midrule
+\multicolumn{4}{l}{\textit{Raw embedding magnitude}} \\
+norm\_growth ($x$) & 1.0128 & 1.0486 & 1.0601 \\
+norm\_std\_within\_clip ($x$) & 0.0692 & 0.1429 & 0.1223 \\
+adjacent\_l2\_distance ($x$) & 0.1288 & 0.2623 & 0.2156 \\
+mean\_norm ($x$) & 2.0368 & 0.9074 & 0.8750 \\
+\midrule
+\multicolumn{4}{l}{\textit{Change-direction consistency}} \\
+change\_direction.gap & 0.0743 & 0.0590 & 0.0537 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Main metrics, \texttt{max} pooling of the raw encoder output --- same three
+checkpoints as Table~\ref{tab:encoder-pooling-agg-mean-main}.}
+\label{tab:encoder-pooling-agg-max-main}
+\begin{tabular}{lccc}
+\toprule
+Metric & noreg & sigreg0.1 & vicreg \\
+\midrule
+\multicolumn{4}{l}{\textit{Whole-dataset collapse and spread}} \\
+effective\_rank\_fraction & \good{0.8867} & \good{0.8723} & \good{0.9198} \\
+\midrule
+\multicolumn{4}{l}{\textit{Trajectory geometry}} \\
+trajectory\_straightness ($z$) & 0.1359 & \bad{0.1082} & \bad{0.1236} \\
+mean\_velocity\_cosine ($z$) & -0.2437 & \bad{-0.3145} & \bad{-0.2697} \\
+start\_end\_displacement ($z$) & 0.0962 & 0.1204 & 0.0989 \\
+direction\_reversal\_fraction ($x$) & \good{0.7165} & \good{0.7761} & \good{0.7440} \\
+\midrule
+\multicolumn{4}{l}{\textit{Temporal order}} \\
+time\_progress\_spearman ($z$) & \bad{0.6876} & \bad{0.6201} & \bad{0.6523} \\
+distance\_to\_goal\_spearman ($x$) & \bad{0.4699} & \bad{0.3614} & \bad{0.4391} \\
+adjacent\_temporal\_nn\_fraction ($z$) & 0.5438 & 0.4206 & 0.4929 \\
+\midrule
+\multicolumn{4}{l}{\textit{Cross-clip temporal consistency}} \\
+tcc\_kendall\_tau (mean) & 0.0653 & 0.0290 & 0.0039 \\
+\midrule
+\multicolumn{4}{l}{\textit{Semantic information}} \\
+chirality.mean\_accuracy ($x$) & \bad{0.6149} & \bad{0.5989} & \bad{0.5839} \\
+content.knn.balanced\_acc & 0.1098 & 0.0846 & 0.0592 \\
+content.linear.balanced\_acc & 0.0902 & 0.0915 & 0.0734 \\
+change.knn.balanced\_acc & 0.0905 & 0.0725 & 0.0627 \\
+change.linear.balanced\_acc & 0.0727 & 0.0889 & 0.0656 \\
+content+change.knn.balanced\_acc & 0.0991 & 0.0798 & 0.0657 \\
+content+change.linear.balanced\_acc & 0.1444 & 0.1523 & 0.1096 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Additional metrics, \texttt{max} pooling --- same three checkpoints as
+Table~\ref{tab:encoder-pooling-agg-max-main}.}
+\label{tab:encoder-pooling-agg-max-additional}
+\begin{tabular}{lccc}
+\toprule
+Metric & noreg & sigreg0.1 & vicreg \\
+\midrule
+\multicolumn{4}{l}{\textit{Trajectory geometry and raw variants}} \\
+mean\_chord\_alignment ($z$) & 0.1083 & 0.0913 & 0.1007 \\
+trajectory\_straightness\_raw ($x$) & 0.1372 & 0.1074 & 0.1235 \\
+mean\_velocity\_cosine\_raw ($x$) & -0.2413 & -0.3174 & -0.2729 \\
+mean\_chord\_alignment\_raw ($x$) & 0.1098 & 0.0916 & 0.1015 \\
+\midrule
+\multicolumn{4}{l}{\textit{Raw embedding magnitude}} \\
+norm\_growth ($x$) & 0.9930 & 1.0014 & 0.9979 \\
+norm\_std\_within\_clip ($x$) & 0.1137 & 0.1408 & 0.1418 \\
+adjacent\_l2\_distance ($x$) & 0.2766 & 0.5059 & 0.4073 \\
+mean\_norm ($x$) & 5.4547 & 6.3557 & 7.0159 \\
+\midrule
+\multicolumn{4}{l}{\textit{Change-direction consistency}} \\
+change\_direction.gap & 0.0308 & 0.0530 & 0.0298 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Main metrics, \texttt{concat} pooling of the raw encoder output (all 196
+patches flattened, $196{\times}8{=}1568$ dims) --- same three checkpoints as
+Table~\ref{tab:encoder-pooling-agg-mean-main}.}
+\label{tab:encoder-pooling-agg-concat-main}
+\begin{tabular}{lccc}
+\toprule
+Metric & noreg & sigreg0.1 & vicreg \\
+\midrule
+\multicolumn{4}{l}{\textit{Whole-dataset collapse and spread}} \\
+effective\_rank\_fraction & \bad{0.3696} & \bad{0.5639} & \bad{0.4630} \\
+\midrule
+\multicolumn{4}{l}{\textit{Trajectory geometry}} \\
+trajectory\_straightness ($z$) & \good{0.1468} & \bad{0.1067} & \bad{0.1262} \\
+mean\_velocity\_cosine ($z$) & \good{-0.2258} & \bad{-0.3034} & \bad{-0.2677} \\
+start\_end\_displacement ($z$) & 0.2594 & 0.7219 & 0.4848 \\
+direction\_reversal\_fraction ($x$) & \good{0.8562} & \bad{0.9713} & \bad{0.9273} \\
+\midrule
+\multicolumn{4}{l}{\textit{Temporal order}} \\
+time\_progress\_spearman ($z$) & \bad{0.8860} & \good{0.9133} & \bad{0.8885} \\
+distance\_to\_goal\_spearman ($x$) & \good{0.6493} & \bad{0.5832} & \good{0.6290} \\
+adjacent\_temporal\_nn\_fraction ($z$) & 0.8184 & 0.8279 & 0.8195 \\
+\midrule
+\multicolumn{4}{l}{\textit{Cross-clip temporal consistency}} \\
+tcc\_kendall\_tau (mean) & 0.1234 & 0.0623 & 0.0946 \\
+\midrule
+\multicolumn{4}{l}{\textit{Semantic information}} \\
+chirality.mean\_accuracy ($x$) & \bad{0.7358} & \bad{0.7118} & \bad{0.7013} \\
+content.knn.balanced\_acc & 0.1313 & 0.1583 & 0.1102 \\
+content.linear.balanced\_acc & 0.2015 & 0.2087 & 0.2264 \\
+change.knn.balanced\_acc & 0.2358 & 0.1884 & 0.1240 \\
+change.linear.balanced\_acc & 0.2649 & 0.1865 & 0.1943 \\
+content+change.knn.balanced\_acc & 0.2353 & 0.2177 & 0.1697 \\
+content+change.linear.balanced\_acc & 0.3368 & 0.2832 & 0.3340 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Additional metrics, \texttt{concat} pooling --- same three checkpoints as
+Table~\ref{tab:encoder-pooling-agg-concat-main}.}
+\label{tab:encoder-pooling-agg-concat-additional}
+\begin{tabular}{lccc}
+\toprule
+Metric & noreg & sigreg0.1 & vicreg \\
+\midrule
+\multicolumn{4}{l}{\textit{Trajectory geometry and raw variants}} \\
+mean\_chord\_alignment ($z$) & 0.1229 & 0.1011 & 0.1113 \\
+trajectory\_straightness\_raw ($x$) & 0.1468 & 0.1067 & 0.1262 \\
+mean\_velocity\_cosine\_raw ($x$) & -0.2258 & -0.3034 & -0.2677 \\
+mean\_chord\_alignment\_raw ($x$) & 0.1229 & 0.1011 & 0.1113 \\
+\midrule
+\multicolumn{4}{l}{\textit{Raw embedding magnitude}} \\
+norm\_growth ($x$) & 0.9999 & 1.0004 & 0.9995 \\
+norm\_std\_within\_clip ($x$) & 0.0170 & 0.0766 & 0.0770 \\
+adjacent\_l2\_distance ($x$) & 5.2959 & 20.2541 & 12.1204 \\
+mean\_norm ($x$) & 44.3610 & 43.7994 & 46.7548 \\
+\midrule
+\multicolumn{4}{l}{\textit{Change-direction consistency}} \\
+change\_direction.gap & 0.0513 & 0.0197 & 0.0237 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Inference}
+
+\textbf{Unlike the token-granularity family, \texttt{noreg} here is already healthy on
+collapse under \texttt{mean}/\texttt{max} pooling without any regularizer at all --- and
+the two regularizers make it \emph{worse}, not better.} \texttt{effective\_rank\_fraction}
+is green for \texttt{noreg} under both \texttt{mean} (0.8176) and \texttt{max} (0.8867);
+\texttt{sigreg0.1} and \texttt{vicreg} are uncolored under \texttt{mean} (close to
+baseline but not clearly beating it) and green under \texttt{max}, but never ahead of
+\texttt{noreg}'s own numbers at the same pooling. This is the opposite of what these
+regularizers were added for: on this specific tensor (the raw encoder output, not
+$z_{\mathrm{agg}}$, which is what they were actually trained against), a checkpoint with
+no explicit anti-collapse term at all has as healthy or healthier rank than either
+regularized one.
+
+\textbf{Under \texttt{concat} specifically, the regularized checkpoints lose the
+straightness-family wins that \texttt{noreg} keeps.} \texttt{noreg} stays green on
+\texttt{trajectory\_straightness}, \texttt{mean\_velocity\_cosine}, and
+\texttt{direction\_reversal\_fraction} under \texttt{concat}, matching the pattern seen
+throughout this log. \texttt{sigreg0.1} and \texttt{vicreg} flip all three to red under
+\texttt{concat} --- \texttt{direction\_reversal\_fraction} in particular reaches
+0.9713 (sigreg0.1) and 0.9273 (vicreg), close to the i.i.d.-noise reference of 1.0,
+noticeably worse than \texttt{noreg}'s 0.8562. Trained with a regularizer that was
+supposed to make the representation healthier, these two checkpoints instead show more
+locally chaotic per-patch geometry than the unregularized baseline, on the exact tensor
+their own training never directly saw.
+
+\textbf{\texttt{distance\_to\_goal\_spearman} still only turns green under
+\texttt{concat}, confirming the pattern from the token-granularity family holds
+regardless of where the regularizer was applied.} All three checkpoints are red under
+\texttt{mean} and \texttt{max} (0.36--0.52), and \texttt{noreg}/\texttt{vicreg} turn
+green under \texttt{concat} (0.6493, 0.6290) while \texttt{sigreg0.1} stays red (0.5832,
+the one exception --- also the checkpoint whose \texttt{concat} numbers look worst
+across the board here). Preserving patch structure rather than pooling still looks like
+the more important lever for this specific metric than which regularizer, or whether
+any regularizer, was used.
+
+\textbf{None of the nine cells reach frozen-encoder-level chirality, and content probes
+stay weak except under \texttt{concat}.} \texttt{chirality.mean\_accuracy} is red for
+every checkpoint under every pooling (0.58--0.74, vs.\ 0.78--0.80 baseline).
+\texttt{content.linear.balanced\_acc} climbs noticeably under \texttt{concat}
+(0.20--0.23) compared to \texttt{mean}/\texttt{max} (0.07--0.09) for all three
+checkpoints alike --- the same content-preservation-via-concat pattern seen in the
+token-granularity comparison, independent of which regularizer (if any) trained the
+checkpoint.
+
+\textbf{Net read: for this specific agg-granularity family, SigReg and VICReg's benefit
+was entirely on $z_{\mathrm{agg}}$ --- read through the raw encoder output instead, they
+add no visible benefit and measurably hurt straightness-family metrics under
+\texttt{concat}.} This is a useful boundary condition on Section~\ref{exp:regularizer-comparison-k400}'s
+fix: it made $z_{\mathrm{agg}}$ healthy, but did not make the upstream encoder
+representation itself any healthier than an unregularized encoder already was --- the
+regularizer's effect appears to be localized to the tensor it was actually computed on,
+not something that propagates back to make the encoder's own per-patch output better in
+any way this evaluation can see.

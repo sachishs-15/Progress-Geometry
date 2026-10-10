@@ -1,0 +1,59 @@
+# token_mode=patch, projector_type=global: raw DINOv2 patch tokens -> GlobalProjector
+# (ported from external/temporal-straightening, see models/projectors.py) -> 1
+# token/frame -> BlockCausalPredictor with num_patches=1 (block-causal over a 1-patch
+# grid IS plain causal) -- NOT cls-mode's CausalPredictor; patch mode has its own
+# reference-exact predictor (see models/block_causal_predictor.py, world_model.py's
+# docstring for why the two modes deliberately use different predictor internals).
+# GlobalProjector already ends in its own LayerNorm (see projectors.py), so norm_type
+# from cls-mode doesn't apply here.
+
+feature_dim: 384      # DINOv2 ViT-S/14 patch-token channel depth
+latent_dim: 384        # GlobalProjector's out_dim
+token_mode: patch
+projector_type: global
+patch_hub_id: dinov2_vits14   # reference: conf/encoder/dino_global.yaml's name="dinov2_vits14"
+                               # -- NO registers (dinov2_vits14_reg is a different pretrained
+                               # checkpoint, not just extra output tokens)
+patch_img_size: 196   # -> 14x14=196 patch grid, matching the reference's Table 1 dims
+                       # exactly (it resizes DINOv2's input to keep the grid at 14x14
+                       # regardless of source resolution, not the 256-patch 16x16 grid a
+                       # naive 224px/patch14 resize would give)
+n_frames: 16
+
+# Predictor hyperparameters -- match external/temporal-straightening/conf/predictor/
+# vit.yaml exactly (the reference uses this SAME config for every encoder mode).
+depth: 6
+heads: 16
+dim_head: 64          # independent of the token's own channel dim -- see
+                       # models/block_causal_predictor.py for why that matters
+mlp_dim: 2048
+dropout: 0.1
+emb_dropout: 0.0
+
+# 0 (default): train causally over the whole n_frames clip in one pass (every next-step
+# supervised per clip). >0: match the reference's actual training regime instead --
+# fixed (window_size+1)-frame windows per example (reference: num_hist=3, num_pred=1).
+# See data/dataset.py's window_size / train.py's --window-size for the mechanics.
+window_size: 0
+
+# Reference's main-experiment collapse-prevention recipe is stop-grad ONLY (Sec 3.3
+# "Collapse prevention": "We use stop-grad for major experiments due to its simplicity
+# and efficiency... VICReg] is orthogonal to these anti-collapse methods and CAN be
+# combined" -- i.e. optional, not part of the main method). vicreg_*_weight left at 0
+# to match; set them >0 only if deliberately deviating from the reference. pred_loss is
+# always MSE in the reference (nn.MSELoss(), no L1 option).
+pred_loss: l2
+pred_weight: 1.0
+straighten_weight: 0.1
+vicreg_std_weight: 0.0
+vicreg_cov_weight: 0.0
+stop_grad: true
+grad_clip: 1.0
+
+# Per-module learning rates -- reference Table 3: Global Projector lr=1e-6 (notably
+# lower than the spatial/channel projector's 1e-5 -- footnote: "We observe severe
+# performance degradation when training without straightening and decreasing the
+# learning rate helps"), Predictor lr=5e-4. Leaving both unset would silently fall
+# back to a single --lr for the whole model instead.
+encoder_lr: 1e-6
+predictor_lr: 5e-4

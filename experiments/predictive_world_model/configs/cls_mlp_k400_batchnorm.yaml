@@ -1,0 +1,41 @@
+# Identical to cls_mlp_k400.yaml except norm_type -- see models/norms.py: BatchNormOverFrames
+# gives every frame from every clip the exact same normalizing statistic (a running EMA,
+# fixed at eval time), the strongest "same latent space" guarantee of the three options,
+# at the cost of train/eval behavioral difference and running-buffer bookkeeping neither
+# LayerNorm nor ClipRMSNorm have. Not yet benchmarked at any scale -- ClipRMSNorm is the
+# validated candidate (see cls_mlp_k400_cliprmsnorm.yaml); this config exists so the
+# option is available to test.
+#
+# Usage:
+#   ./train.sh configs/cls_mlp_k400_batchnorm.yaml
+#   qsub train.pbs   (edit CONFIG= in train.pbs first)
+
+features: /mnt/rdata7/proprogress/data/kinetics-dataset/precomputed_features/dinov2/k400_train_full.pt
+checkpoint_dir: checkpoints/pwm_cls_mlp_k400_batchnorm
+val_fraction: 0
+seed: 0
+
+feature_dim: 384
+latent_dim: 384
+hidden_dim: 384
+use_projector: true
+norm_type: batchnorm
+nhead: 8
+pred_num_layers: 2
+dropout: 0.1
+max_len: 16
+n_frames: 16
+
+pred_loss: l1
+pred_weight: 1.0
+straighten_weight: 0.1
+vicreg_std_weight: 1.0
+vicreg_cov_weight: 0.04
+stop_grad: true
+
+epochs: 500
+batch_size: 128
+lr: 0.0001
+weight_decay: 0.00001
+grad_clip: 1.0
+num_workers: 4

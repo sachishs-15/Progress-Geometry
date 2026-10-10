@@ -1,0 +1,16 @@
+#!/bin/bash
+#PBS -N pouring_ope_fill32
+#PBS -l select=1:ncpus=8:mem=48gb:ngpus=1
+#PBS -l walltime=01:00:00
+#PBS -o /home/sachish/proc-planning/experiments/pouring_ope/pbslogs/
+#PBS -e /home/sachish/proc-planning/experiments/pouring_ope/pbslogs/
+
+PY=/home/sachish/.conda/envs/frozen-encoders/bin/python
+P=/home/sachish/proc-planning/experiments/predictive_world_model/checkpoints
+cd /home/sachish/proc-planning/experiments/pouring_ope
+A="--encoder hubdinov2_vits14 --image-size 196 --stride 1 --n-frames 32 --out-dir results_fixed32_prepool"
+
+$PY run_ope.py $A --pool mean --name raw_dinov2_patch_mean
+$PY run_ope.py $A --checkpoint $P/pwm_pouring_patch_channel_paper_window3_vicreg_bs4/last.ckpt --ckpt-pool mean --name pouring_w3_vicreg_bs4__mean
+$PY run_ope.py $A --checkpoint $P/pwm_pouring_patch_channel_paper_window3_vicreg/last.ckpt --ckpt-pool mean --name pouring_w3_vicreg_bs16__mean
+$PY run_ope.py $A --checkpoint $P/pwm_patch_channel_paper_window3_vicreg/last.ckpt --ckpt-pool mean --name k400_w3_vicreg_zeroshot__mean

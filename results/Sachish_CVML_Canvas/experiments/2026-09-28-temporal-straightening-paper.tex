@@ -1,0 +1,228 @@
+\subsection{Window Size vs.\ VICReg Ablation (Patch-Channel PWM)}
+\label{exp:window-vicreg-ablation}
+
+\paragraph{What we tried} The patch-channel predictive world model had been collapsing
+in earlier runs, so we adopted the anti-collapse recipe from
+\cite{wang2026temporal_straightening} directly --- a VICReg std/cov regularizer applied
+alongside the curvature/straightening loss --- and swept window size (0 vs.\ 3) to check
+whether matching their setup would fix it. Four checkpoints, all \texttt{straighten\_weight=0.1},
+\texttt{batch\_size=32}, \texttt{vicreg\_granularity=token}: \texttt{pwm\_patch\_channel\_paper\_window0\_2}
+(\texttt{window0\_2}, normal), \texttt{pwm\_patch\_channel\_paper\_window0\_vicreg\_3}
+(\texttt{window0\_vicreg\_3}, VICReg), \texttt{pwm\_patch\_channel\_paper\_window3}
+(\texttt{window3}, normal), \texttt{pwm\_patch\_channel\_paper\_window3\_vicreg}
+(\texttt{window3\_vicreg}, VICReg). Scored with the same full metric suite from
+Section~\ref{sec:methodology} (Main and Additional), and separately compared training
+dynamics across all four.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.75\linewidth]{figures/pwn_temporal_straightening.png}
+    \caption{Enter Caption}
+    \label{fig:pwm_temporal_straightening}
+\end{figure}
+
+\paragraph{Result}
+
+\begin{table}[H]
+\centering
+\caption{Main metrics, four patch-channel PWM checkpoints.}
+\label{tab:window-vicreg-main}
+\begin{tabular}{lcccc}
+\toprule
+Metric & window0\_2 & window0\_vicreg\_3 & window3 & window3\_vicreg \\
+ & (normal) & (VICReg) & (normal) & (VICReg) \\
+\midrule
+\multicolumn{5}{l}{\textit{Whole-dataset collapse and spread}} \\
+effective\_rank\_fraction & \bad{0.0155} & \bad{0.0161} & \bad{0.0185} & \bad{0.0181} \\
+$W$ (within-clip mean pairwise L2) & 1.51 & 1.53 & 1.51 & 1.52 \\
+$B$ (across-clip mean pairwise L2) & 3.90 & 4.03 & 4.05 & 4.02 \\
+$B-W$ (gap) & 2.39 & 2.50 & 2.54 & 2.50 \\
+\midrule
+\multicolumn{5}{l}{\textit{Trajectory geometry}} \\
+trajectory\_straightness ($z$) & \good{0.2230} & \good{0.2285} & \good{0.2345} & \good{0.2357} \\
+mean\_velocity\_cosine ($z$) & \good{-0.0448} & \good{-0.0395} & \good{-0.0173} & \good{-0.0081} \\
+start\_end\_displacement ($z$) & 0.1972 & 0.2053 & 0.2023 & 0.2006 \\
+direction\_reversal\_fraction ($x$) & \good{0.521} & \good{0.518} & \good{0.508} & \good{0.503} \\
+\midrule
+\multicolumn{5}{l}{\textit{Temporal order}} \\
+time\_progress\_spearman ($z$) & \bad{0.460} & \bad{0.472} & \bad{0.485} & \bad{0.467} \\
+distance\_to\_goal\_spearman ($x$) & \bad{0.336} & \bad{0.356} & \bad{0.373} & \bad{0.352} \\
+adjacent\_temporal\_nn\_fraction ($z$) & 0.3371 & 0.3393 & 0.3494 & 0.3535 \\
+\midrule
+\multicolumn{5}{l}{\textit{Cross-clip temporal consistency}} \\
+tcc\_kendall\_tau (mean) & 0.0355 & 0.0282 & 0.0256 & 0.0293 \\
+\midrule
+\multicolumn{5}{l}{\textit{Semantic information}} \\
+chirality.mean\_accuracy ($x$) & \bad{0.565} & \bad{0.601} & \bad{0.616} & \bad{0.605} \\
+content.knn.balanced\_acc & 0.062 & 0.060 & 0.067 & 0.073 \\
+content.linear.balanced\_acc & 0.092 & 0.089 & 0.126 & 0.114 \\
+change.knn.balanced\_acc & 0.0834 & 0.0838 & 0.0691 & 0.0874 \\
+change.linear.balanced\_acc & 0.1338 & 0.1461 & 0.1453 & 0.1372 \\
+content+change.knn.balanced\_acc & 0.0836 & 0.0831 & 0.0629 & 0.1040 \\
+content+change.linear.balanced\_acc & 0.1290 & 0.1435 & 0.1932 & 0.1764 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Additional metrics, four patch-channel PWM checkpoints --- same runs as
+Table~\ref{tab:window-vicreg-main}.}
+\label{tab:window-vicreg-additional}
+\begin{tabular}{lcccc}
+\toprule
+Metric & window0\_2 & window0\_vicreg\_3 & window3 & window3\_vicreg \\
+ & (normal) & (VICReg) & (normal) & (VICReg) \\
+\midrule
+\multicolumn{5}{l}{\textit{Trajectory geometry and raw variants}} \\
+mean\_chord\_alignment ($z$) & 0.1195 & 0.1235 & 0.1285 & 0.1185 \\
+trajectory\_straightness\_raw ($x$) & 0.223 & 0.229 & 0.235 & 0.236 \\
+mean\_velocity\_cosine\_raw ($x$) & -0.045 & -0.039 & -0.017 & -0.008 \\
+mean\_chord\_alignment\_raw ($x$) & 0.120 & 0.124 & 0.129 & 0.119 \\
+\midrule
+\multicolumn{5}{l}{\textit{Raw embedding magnitude}} \\
+norm\_growth ($x$) & 1.0008 & 1.0009 & 1.0011 & 1.0010 \\
+norm\_std\_within\_clip ($x$) & 0.0643 & 0.0760 & 0.0716 & 0.0924 \\
+adjacent\_l2\_distance ($x$) & 0.6669 & 0.6632 & 0.6254 & 0.6289 \\
+mean\_norm ($x$) & 10.8613 & 10.7970 & 10.8302 & 10.7522 \\
+\midrule
+\multicolumn{5}{l}{\textit{Change-direction consistency}} \\
+change\_direction.gap & 0.1497 & 0.1579 & 0.1474 & 0.1277 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Training stability: best-epoch selection and completion.}
+\label{tab:window-vicreg-stability}
+\begin{tabular}{lcc}
+\toprule
+Checkpoint & Best epoch & Total logged \\
+\midrule
+window0\_2 (normal) & 16 & 49 \\
+window0\_vicreg\_3 & 18 & 49 \\
+window3 (normal) & 43 & 49 \\
+window3\_vicreg & 49 & 49 \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.3em}
+{\footnotesize All four runs logged the full 50 epochs (indices 0--49) --- verified
+directly against each checkpoint's \texttt{train\_log.csv}.}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Loss terms, epoch 0 $\to$ best epoch.}
+\label{tab:window-vicreg-losses}
+\footnotesize
+\begin{tabular}{llccc}
+\toprule
+Checkpoint & Loss term & Epoch 0 & Best epoch & Change \\
+\midrule
+\multirow{3}{*}{window0\_2}
+ & train\_pred & 0.365 & 0.050 & $\downarrow$86\% \\
+ & train\_straighten & 1.310 & 0.990 & $\downarrow$24\% \\
+ & train\_total & 0.496 & 0.149 & $\downarrow$70\% \\
+\midrule
+\multirow{5}{*}{window0\_vicreg\_3}
+ & train\_pred & 0.439 & 0.067 & $\downarrow$85\% \\
+ & train\_straighten & 1.329 & 0.963 & $\downarrow$28\% \\
+ & train\_vicreg\_std & 0.0088 & 0.0002 & $\downarrow$98\% \\
+ & train\_vicreg\_cov & 0.273 & 0.170 & $\downarrow$38\% \\
+ & train\_total & 0.591 & 0.170 & $\downarrow$71\% \\
+\midrule
+\multirow{3}{*}{window3}
+ & train\_pred & 0.422 & 0.046 & $\downarrow$89\% \\
+ & train\_straighten & 1.363 & 1.023 & $\downarrow$25\% \\
+ & train\_total & 0.558 & 0.149 & $\downarrow$73\% \\
+\midrule
+\multirow{5}{*}{window3\_vicreg}
+ & train\_pred & 0.480 & 0.056 & $\downarrow$88\% \\
+ & train\_straighten & 1.369 & 1.007 & $\downarrow$26\% \\
+ & train\_vicreg\_std & 0.0099 & 0.0003 & $\downarrow$97\% \\
+ & train\_vicreg\_cov & 0.257 & 0.177 & $\downarrow$31\% \\
+ & train\_total & 0.637 & 0.164 & $\downarrow$74\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Loss trajectory after the best epoch --- window0 pair, three checkpoints along
+the run: best epoch, epoch 39/38 (the point originally reported as this run's endpoint),
+and epoch 49 (the run's actual final logged epoch). window3/window3\_vicreg reach their
+best epoch at or after epoch 43 and are not shown here.}
+\label{tab:window-vicreg-divergence}
+\footnotesize
+\begin{tabular}{llccc}
+\toprule
+Checkpoint & Loss term & Best epoch & Epoch 39/38 & Epoch 49 (final) \\
+\midrule
+\multirow{2}{*}{window0\_2}
+ & train\_pred & 0.050 (ep16) & 0.370 (ep39) & 0.516 \\
+ & train\_total & 0.149 (ep16) & 0.473 (ep39) & 0.623 \\
+\midrule
+\multirow{3}{*}{window0\_vicreg\_3}
+ & train\_pred & 0.067 (ep18) & 0.339 (ep38) & 0.289 \\
+ & train\_vicreg\_std & 0.0002 (ep18) & 0.269 (ep38) & 0.397 \\
+ & train\_total & 0.170 (ep18) & 0.723 (ep38) & 0.793 \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.3em}
+{\footnotesize The epoch-39/38 snapshot was originally reported as this run's final
+logged epoch (\texttt{train\_log.csv} appeared to stop there); the file now contains the
+full 50 epochs for both checkpoints, so the epoch-49 column reflects the actual end of
+training, verified directly against the current \texttt{train\_log.csv}. Neither run
+recovers back toward its best-epoch value by epoch 49: \texttt{window0\_2} continues
+getting worse on both terms past epoch 39; \texttt{window0\_vicreg\_3}'s
+\texttt{train\_pred} improves slightly past epoch 38 but \texttt{train\_vicreg\_std} and
+\texttt{train\_total} continue worsening.}
+\end{table}
+
+\paragraph{Inference}
+
+\textbf{This is the first attempt at actually training the patch-channel architecture
+whose frozen-encoder relatives (DINOv2\textsubscript{mean}, V-JEPA2\textsubscript{mean})
+looked reasonable in the previous experiment.} The patch-channel predictive world model
+had been collapsing in earlier runs, so this ablation adopted a published anti-collapse
+recipe (VICReg std/cov on top of the curvature/straightening loss) and swept window size
+to see whether matching that setup would fix it.
+
+\textbf{It did not, and every checkpoint here is colored red on collapse for the same
+reason.} All four checkpoints land at \texttt{effective\_rank\_fraction}
+0.0155--0.0185 --- 40--50$\times$ lower than either DINOv2 baseline (0.73--0.81) and
+far below even the worst frozen encoder in the previous experiment
+(V-JEPA2\textsubscript{mean}, 0.4202). Window size (0 vs.\ 3) and VICReg (on vs.\ off)
+make essentially no difference to this number --- whatever is causing the collapse, it
+isn't what this ablation swept.
+
+\textbf{Meanwhile every straightness/reversal/velocity-cosine cell is green, and
+\texttt{time\_progress\_spearman}/\texttt{distance\_to\_goal\_spearman} are both
+red --- the exact blind spot this document's own framing warns about.}
+\texttt{trajectory\_straightness} (0.223--0.236) beats \emph{both} DINOv2 baselines for
+all four checkpoints, as does \texttt{mean\_velocity\_cosine} (-0.045 to -0.008, i.e.\
+far less negative/zig-zagging than DINOv2's -0.24 to -0.26) and
+\texttt{direction\_reversal\_fraction} (0.50--0.52, close to the random-walk reference of
+0.5, vs.\ DINOv2's 0.88--0.89, close to the i.i.d.-noise reference of 1.0). Read in
+isolation, these four checkpoints would look like the straightest, smoothest
+trajectories in this entire log. Read next to \texttt{effective\_rank\_fraction} --- or
+next to the two temporal-order metrics, both red for all four checkpoints
+(\texttt{time\_progress\_spearman} 0.46--0.49 vs.\ DINOv2's 0.90--0.91;
+\texttt{distance\_to\_goal\_spearman} 0.34--0.37 vs.\ 0.61--0.62) --- they are also the
+most collapsed and the least temporally ordered checkpoints in the log so far. This is
+the clearest demonstration yet of why straightness alone cannot be read as "this
+representation is good": \texttt{chirality.mean\_accuracy} (0.565--0.616, all red, well
+below both baselines' 0.78--0.80) is a third independent signal pointing the same
+direction as rank and temporal order --- the straightness family of metrics is the odd
+one out here, silent on the collapse or actively misleading.
+
+\textbf{window\_size, not VICReg, determines whether training completes cleanly.} Both
+window0 runs (\texttt{window0\_2}, \texttt{window0\_vicreg\_3}) hit their best epoch
+early (16, 18) and then get \emph{worse} for the remaining $\sim$30 epochs of the same
+50-epoch run, regardless of VICReg; both window3 runs reach their best epoch late (43,
+49) and stay near it. VICReg being on or off does not change this pattern, which is a
+first hint that VICReg is not doing the job it was added to do here --- pursued directly
+in the next experiment.

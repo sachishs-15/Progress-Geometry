@@ -1,0 +1,20 @@
+#!/bin/bash
+#PBS -N charades_extract_clips
+#PBS -l select=1:ncpus=32:mem=32gb
+#PBS -l walltime=04:00:00
+#PBS -o /home/sachish/proc-planning/scripts/local/dataset/pbslogs/
+#PBS -e /home/sachish/proc-planning/scripts/local/dataset/pbslogs/
+
+PYTHON=/home/sachish/.conda/envs/frozen-encoders/bin/python
+CLIP_INDEX_DIR=/home/sachish/proc-planning/external/chirality_in_action/cia_full_dataset/clip_index
+OUT_ROOT=/mnt/rdata7/proprogress/data/Charades/cia-data
+
+cd /home/sachish/proc-planning/scripts/local/dataset
+
+"$PYTHON" extract_clips.py \
+  --index "$CLIP_INDEX_DIR/charades_train_index.csv" \
+  --out-dir "$OUT_ROOT/train" --num-workers 32
+
+"$PYTHON" extract_clips.py \
+  --index "$CLIP_INDEX_DIR/charades_validation_index.csv" \
+  --out-dir "$OUT_ROOT/validation" --num-workers 32

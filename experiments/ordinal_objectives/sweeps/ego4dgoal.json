@@ -1,0 +1,305 @@
+{
+  "defaults": {
+    "epochs": 100
+  },
+  "runs": [
+    {
+      "name": "ego_progress_regression",
+      "config": "configs/progress_regression.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv"
+    },
+    {
+      "name": "ego_progress_regression_bo",
+      "config": "configs/progress_regression_bo.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv"
+    },
+    {
+      "name": "ego_progress_regression_crop",
+      "config": "configs/progress_regression_crop.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv"
+    },
+    {
+      "name": "ego_ordinal_ce",
+      "config": "configs/ordinal_ce.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv"
+    },
+    {
+      "name": "ego_ordinal_soft",
+      "config": "configs/ordinal_soft.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv"
+    },
+    {
+      "name": "ego_ordinal_coral",
+      "config": "configs/ordinal_coral.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv"
+    },
+    {
+      "name": "ego_ordinal_corn",
+      "config": "configs/ordinal_corn.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv"
+    },
+    {
+      "name": "ego_pairwise_rank",
+      "config": "configs/pairwise_rank.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv"
+    },
+    {
+      "name": "ego_pairwise_rank_cross",
+      "config": "configs/pairwise_rank_cross.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv"
+    },
+    {
+      "name": "ego_shuffle_sort",
+      "config": "configs/shuffle_sort.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv"
+    },
+    {
+      "name": "ego_shuffle_verify",
+      "config": "configs/shuffle_verify.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv"
+    },
+    {
+      "name": "ego_shuffle_permutation",
+      "config": "configs/shuffle_permutation.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv"
+    },
+    {
+      "name": "ego_rank_n_contrast",
+      "config": "configs/rank_n_contrast.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv"
+    },
+    {
+      "name": "ego_rank_n_contrast_t0.5",
+      "config": "configs/rank_n_contrast.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv",
+      "objective_kwargs": {
+        "temperature": 0.5,
+        "sim": "l2",
+        "normalize": false
+      }
+    },
+    {
+      "name": "ego_rank_n_contrast_t8",
+      "config": "configs/rank_n_contrast.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv",
+      "objective_kwargs": {
+        "temperature": 8.0,
+        "sim": "l2",
+        "normalize": false
+      }
+    },
+    {
+      "name": "ego_tcn",
+      "config": "configs/tcn.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv"
+    },
+    {
+      "name": "ego_tcc",
+      "config": "configs/tcc.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv",
+      "pair_col": "goal_category"
+    },
+    {
+      "name": "ego_tcc_classification",
+      "config": "configs/tcc_classification.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv",
+      "pair_col": "goal_category"
+    },
+    {
+      "name": "ego_scl",
+      "config": "configs/scl.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv"
+    },
+    {
+      "name": "ego_vip",
+      "config": "configs/vip.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv"
+    },
+    {
+      "name": "ego_arrow_of_time",
+      "config": "configs/arrow_of_time.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv"
+    },
+    {
+      "name": "ego_pace",
+      "config": "configs/pace.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv"
+    },
+    {
+      "name": "ego_next_step",
+      "config": "configs/next_step.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv"
+    },
+    {
+      "name": "ego_next_step_pwm_recipe",
+      "config": "configs/next_step_pwm_recipe.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv"
+    },
+    {
+      "name": "ego_straighten_only",
+      "config": "configs/straighten_only.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv"
+    },
+    {
+      "name": "ego_progressor",
+      "config": "configs/progressor.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv"
+    },
+    {
+      "name": "ego_progressor_meanonly",
+      "config": "configs/progressor_meanonly.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv"
+    },
+    {
+      "name": "ego_progressor_crop",
+      "config": "configs/progressor_crop.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv"
+    },
+    {
+      "name": "ego_soft_dtw",
+      "config": "configs/soft_dtw.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv",
+      "pair_col": "goal_category"
+    },
+    {
+      "name": "ego_ordinal_entropy",
+      "config": "configs/ordinal_entropy.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv"
+    },
+    {
+      "name": "ego_shuffle_sort_k8_tinyhead",
+      "config": "configs/shuffle_sort.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv",
+      "objective_kwargs": {
+        "variant": "sort",
+        "num_frames": 8,
+        "d_model": 32,
+        "num_layers": 1
+      }
+    },
+    {
+      "name": "ego_arrow_of_time_tinyhead",
+      "config": "configs/arrow_of_time.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv",
+      "objective_kwargs": {
+        "d_model": 32,
+        "num_layers": 1
+      }
+    },
+    {
+      "name": "ego_pace_r1234_tinyhead",
+      "config": "configs/pace.yaml",
+      "features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_train.pt",
+      "val_features": "/mnt/rdata7/proprogress/data/ego4dgoal/precomputed_features/dinov2/ego4dgoal_val.pt",
+      "train_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv",
+      "val_manifest": "/home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_val.csv",
+      "objective_kwargs": {
+        "num_frames": 4,
+        "rates": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "d_model": 32,
+        "num_layers": 1
+      }
+    }
+  ]
+}

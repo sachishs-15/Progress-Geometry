@@ -1,0 +1,86 @@
+# Companion to patch_channel_paper_window3.yaml -- IDENTICAL in every other setting
+# (see that file's header for the full list of what does/doesn't match
+# external/temporal-straightening's own recipe and why). The only difference is:
+#
+# window_size: 0 -- this project's own original default (train causally over the whole
+# n_frames=16 clip in one pass, every next-step transition supervised per clip), NOT the
+# reference's actual num_hist=3/num_pred=1 windowed regime. This is the "what we thought"
+# variant; patch_channel_paper_window3.yaml is the one that actually reproduces the
+# paper's training regime. Diff the two files to see that this is the only knob changed.
+#
+# SSv2 variant: identical to patch_channel_paper_window0.yaml except `features`
+# (SSv2 train instead of K400 10pct) and checkpoint_dir. SSv2 train's own dinov2_noreg
+# patch features only existed as 4 unmerged shards (ssv2_train.pt.shard{0-3}.pt, legacy
+# format -- no extraction_metadata/fingerprint, so scripts/local/precompute_features/
+# merge_features.py's checksum cross-check rejects them) until merged into a single
+# ssv2_train.pt (12,216 clips, (12216,16,196,384)) via
+# scratch_merge_ssv2_patch_shards.py. No --train-manifest needed or given: train.py
+# falls back to the features file's OWN video_paths when none is passed (train.py
+# L550-554), so this trains on exactly those 12,216 clips, matching the convention
+# every other config here already uses (K400 configs don't pass one either).
+
+features: /mnt/rdata7/proprogress/data/SSv2/precomputed_features/dinov2_noreg/ssv2_train.pt
+checkpoint_dir: checkpoints/pwm_patch_channel_paper_window0_ssv2
+val_fraction: 0.0
+seed: 0
+
+feature_dim: 384
+latent_dim: 384        # unused by projector_type=channel -- actual dim is channel_out_dim
+channel_out_dim: 8
+channel_hidden: 192
+num_patches: 196
+token_mode: patch
+projector_type: channel
+patch_hub_id: dinov2_vits14
+patch_img_size: 196    # reference derivation (visual_world_model.py __init__): decoder_scale=16,
+                       # num_side_patches = image_size(224)//16 = 14, encoder_image_size =
+                       # 14 * patch_size(14) = 196 -- i.e. it resizes to 196px specifically
+                       # to force a 14x14 grid, independent of the env's raw 224px images
+n_frames: 16
+
+depth: 6
+heads: 16
+dim_head: 64
+mlp_dim: 2048
+dropout: 0.1
+emb_dropout: 0.0
+
+agg_mlp_hidden_dim: 512
+agg_out_dim: 128
+
+# THE variable under test in this pair of configs.
+# window_size=0 -> whole n_frames=16 clip, causal in one pass (this project's default,
+# NOT the reference's own regime -- see patch_channel_paper_window3.yaml for that one).
+window_size: 0
+
+pred_loss: l2
+pred_weight: 1.0
+straighten_weight: 0.1
+vicreg_std_weight: 0.0
+vicreg_cov_weight: 0.0
+vicreg_granularity: token
+sigreg_weight: 0.0
+chord_weight: 0.0
+stop_grad: true
+
+encoder_lr: 1e-5
+predictor_lr: 5e-4
+weight_decay: 0.0
+grad_clip: 0.0
+
+epochs: 50
+save_every: 10
+batch_size: 32
+amp: true
+# 0, not 4 -- num_workers>0 spawns separate worker processes that pass batched tensors
+# back to the main process via /dev/shm (node-wide shared memory, not isolated per PBS
+# job). This config's window_size=0 batches are large enough ((32,16,196,384) float32 =
+# ~1.5GB/batch) that repeated worker->main handoffs exhausted /dev/shm and got the job
+# SIGBUS-killed multiple times, even when pinned to an otherwise-idle node (another
+# tenant's job sharing the same node was enough to tip it over). num_workers=0 runs
+# data loading in the main process instead -- no IPC, no /dev/shm dependency at all.
+# Costs the prefetch overlap (see data/dataset.py's window_size docstring / DataLoader
+# construction in train.py), but since features are precomputed (no live DINOv2 forward
+# pass), per-batch loading is just an mmap index + stack, cheap relative to the
+# 2.36s/step transformer forward+backward -- shouldn't meaningfully slow this down.
+num_workers: 0

@@ -1,0 +1,34 @@
+{
+  "defaults": {
+    "epochs": 100
+  },
+  "runs": [
+    {"config": "configs/progress_regression.yaml"},
+    {"config": "configs/progress_regression_bo.yaml"},
+    {"config": "configs/progress_regression_crop.yaml"},
+    {"config": "configs/ordinal_ce.yaml"},
+    {"config": "configs/ordinal_soft.yaml"},
+    {"config": "configs/ordinal_coral.yaml"},
+    {"config": "configs/ordinal_corn.yaml"},
+    {"config": "configs/pairwise_rank.yaml"},
+    {"config": "configs/pairwise_rank_cross.yaml"},
+    {"config": "configs/shuffle_sort.yaml"},
+    {"config": "configs/shuffle_verify.yaml"},
+    {"config": "configs/shuffle_permutation.yaml"},
+    {"config": "configs/rank_n_contrast.yaml"},
+    {"name": "rank_n_contrast_t0.5", "config": "configs/rank_n_contrast.yaml",
+     "objective_kwargs": {"temperature": 0.5, "sim": "l2", "normalize": false}},
+    {"name": "rank_n_contrast_t8", "config": "configs/rank_n_contrast.yaml",
+     "objective_kwargs": {"temperature": 8.0, "sim": "l2", "normalize": false}},
+    {"config": "configs/tcn.yaml"},
+    {"config": "configs/tcc.yaml"},
+    {"config": "configs/tcc_classification.yaml"},
+    {"config": "configs/scl.yaml"},
+    {"config": "configs/vip.yaml"},
+    {"config": "configs/arrow_of_time.yaml"},
+    {"config": "configs/pace.yaml"},
+    {"config": "configs/next_step.yaml"},
+    {"config": "configs/next_step_pwm_recipe.yaml"},
+    {"config": "configs/straighten_only.yaml"}
+  ]
+}

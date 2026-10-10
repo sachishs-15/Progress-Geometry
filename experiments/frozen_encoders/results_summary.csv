@@ -1,0 +1,4 @@
+timestamp,model,video,stride,max_frames,pooling,method,num_frames,ordinality_score,curvature_deg,video_path,metrics_file
+2026-08-06T18:37:24,dinov2,screwing.mp4,4,32,mean_patch,tsne,32,0.9457,102.03,,/home/sachish/proc-planning/experiments/frozen_encoders/models/dinov2/outputs/screwing_stride4_mean_patch_tsne_metrics.json
+2026-08-06T18:33:10,dinov2,folding_dress.mp4,4,32,mean_patch,tsne,32,0.8669,98.53,,/home/sachish/proc-planning/experiments/frozen_encoders/models/dinov2/outputs/folding_dress_stride4_mean_patch_tsne_metrics.json
+2026-08-06T18:37:31,vjepa2,screwing.mp4,4,32,mean_patch,tsne,32,0.8354,110.84,,/home/sachish/proc-planning/experiments/frozen_encoders/models/vjepa2/outputs/screwing_stride4_mean_patch_tsne_metrics.json

@@ -1,0 +1,46 @@
+# Kinetics-400 pretraining, cls-token mode. Optimization settings match LiFT's own K400
+# configs (configs/base_lift.yaml / masked_jepa.yaml) so results are comparable against
+# the LiFT model family trained on the identical features file.
+#
+# Every clip here is already precomputed, so no manifest is needed and no video is ever
+# decoded during training — FeatureProvider serves all 250K from the .pt below. (The
+# on-the-fly path still exists; it just never fires for this config.)
+#
+# Usage:
+#   ./train.sh configs/cls_mlp_k400.yaml
+#   qsub train.pbs
+
+features: /mnt/rdata7/proprogress/data/kinetics-dataset/precomputed_features/dinov2/k400_train_full.pt
+checkpoint_dir: checkpoints/pwm_cls_mlp_k400
+val_fraction: 0
+seed: 0
+
+# Architecture — same encoder sizing as LiFT's K400 runs (D=384 DINOv2 ViT-S/14, d=384)
+feature_dim: 384
+latent_dim: 384
+hidden_dim: 384
+use_projector: true
+norm_type: layernorm
+nhead: 8
+pred_num_layers: 2
+dropout: 0.1
+max_len: 16
+n_frames: 16
+
+# Loss: latent-space next-step prediction (main signal) + curvature + VICReg anti-collapse
+pred_loss: l1
+pred_weight: 1.0
+straighten_weight: 0.1
+vicreg_std_weight: 1.0
+vicreg_cov_weight: 0.04
+stop_grad: true
+
+# Optimization. lr=1e-4 rather than LiFT base's 1e-3: this is a predictive objective whose
+# target is a moving copy of the encoder's own latents, the same setup where lr=1e-3 made
+# masked-jepa's prediction loss RISE over early epochs (see configs/masked_jepa.yaml).
+epochs: 500
+batch_size: 128
+lr: 0.0001
+weight_decay: 0.00001
+grad_clip: 1.0
+num_workers: 4

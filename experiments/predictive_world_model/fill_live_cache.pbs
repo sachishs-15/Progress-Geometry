@@ -1,0 +1,19 @@
+#!/bin/bash
+#PBS -N pwm_cache_fill
+#PBS -l select=1:ncpus=32:mem=128gb:ngpus=4
+#PBS -l walltime=08:00:00
+#PBS -o /home/sachish/proc-planning/experiments/predictive_world_model/pbslogs/
+#PBS -e /home/sachish/proc-planning/experiments/predictive_world_model/pbslogs/
+
+for i in $(seq 1 300); do ls /mnt/rdata7 >/dev/null 2>&1 && break; sleep 2; done
+
+cd /home/sachish/proc-planning/experiments/predictive_world_model
+for i in $(seq 0 31); do
+  ( CUDA_VISIBLE_DEVICES=$((i % 4)) OMP_NUM_THREADS=1 /home/sachish/.conda/envs/lift/bin/python -u fill_live_cache.py \
+      --manifest /home/sachish/proc-planning/data/ego4dgoal/ego4dgoal_train.csv \
+      --live-cache-dir /mnt/rdata7/proprogress/data/ego4dgoal/live_cache/pwm_patch_dinov2_noreg \
+      --shard-id $i --num-shards 32 > pbslogs/fillcache_$i.log 2>&1
+    echo "shard $i exit $?" >> pbslogs/fillcache_exit.log ) &
+done
+wait
+ls /mnt/rdata7/proprogress/data/ego4dgoal/live_cache/pwm_patch_dinov2_noreg | grep -c "\.pt$"

@@ -1,0 +1,9 @@
+#!/bin/bash
+#PBS -N frozen_encoders_batch
+#PBS -l select=1:ncpus=64:mem=64gb:ngpus=4
+#PBS -l walltime=04:00:00
+#PBS -o /home/sachish/proc-planning/experiments/frozen_encoders/pbslogs/
+#PBS -e /home/sachish/proc-planning/experiments/frozen_encoders/pbslogs/
+
+cd /home/sachish/proc-planning/experiments/frozen_encoders
+bash run_all_parallel.sh

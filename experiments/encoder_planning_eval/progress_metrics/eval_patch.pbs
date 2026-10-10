@@ -1,0 +1,13 @@
+#!/bin/bash
+#PBS -N pwm_progress_eval
+#PBS -l select=1:ncpus=16:mem=128gb
+#PBS -l walltime=4:00:00
+#PBS -o /home/sachish/proc-planning/experiments/encoder_planning_eval/progress_metrics/pbslogs/
+#PBS -e /home/sachish/proc-planning/experiments/encoder_planning_eval/progress_metrics/pbslogs/
+
+for _ in $(seq 150); do [ -r /mnt/rdata7/proprogress/data ] && break; sleep 2; done
+
+cd /home/sachish/proc-planning/experiments/encoder_planning_eval/progress_metrics
+/home/sachish/.conda/envs/lift/bin/python run_progress_metrics_batch.py \
+    --spec ego4dgoal_val_patch.json --results-dir results/ego4dgoal_val_patch \
+    --csv-out results/ego4dgoal_val_patch_summary.csv --workers 1

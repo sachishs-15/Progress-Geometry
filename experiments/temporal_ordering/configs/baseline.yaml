@@ -1,0 +1,18 @@
+# Model A — original representation, no representation learning.
+experiment_name: baseline
+
+dataset:
+  cache_dir: data_cache/synthetic
+  progress_type: timestamp
+
+split: {train: 0.7, val: 0.15, test: 0.15, seed: 42}
+splits_dir: splits
+seed: 42
+train_frac: 1.0
+
+probe:
+  representation: raw
+  lr: 0.001
+  epochs: 50
+  batch_size: 64
+  weight_decay: 0.0

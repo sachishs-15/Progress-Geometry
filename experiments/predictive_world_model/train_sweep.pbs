@@ -1,0 +1,19 @@
+#!/bin/bash
+#PBS -N pwm_sweep
+#PBS -l select=1:ncpus=16:mem=64gb:ngpus=1
+#PBS -l walltime=48:00:00
+#PBS -o /home/sachish/proc-planning/experiments/predictive_world_model/pbslogs/
+#PBS -e /home/sachish/proc-planning/experiments/predictive_world_model/pbslogs/
+
+# Straightening-weight sweep. Submit one job per weight:
+#   qsub -v STRAIGHTEN_WEIGHT=0.5 train_sweep.pbs
+#
+# The weight is passed as a single scalar rather than a whole EXTRA_ARGS string because
+# PBS -v treats commas as variable separators and mangles quoted values with spaces.
+SW="${STRAIGHTEN_WEIGHT:?set with: qsub -v STRAIGHTEN_WEIGHT=<float> train_sweep.pbs}"
+CONFIG="${CONFIG:-/home/sachish/proc-planning/experiments/predictive_world_model/configs/cls_mlp_k400.yaml}"
+
+cd /home/sachish/proc-planning/experiments/predictive_world_model
+bash train.sh "$CONFIG" \
+    --straighten-weight "$SW" \
+    --checkpoint-dir "checkpoints/pwm_cls_mlp_k400_sw${SW}"
